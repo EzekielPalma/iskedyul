@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'models.dart';
+import 'package:iskedyul/data/models.dart';
 
 List<Schedule> demoSchedules(DateTime today) => [
   Schedule(

@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 
-import 'demo_data.dart';
 import 'models.dart';
 import 'snapshot.dart';
 import 'storage_contract.dart';
 
 // All changes are saved synchronously as one browser-local snapshot.
 class AppState extends ChangeNotifier {
-  AppState({DateTime? now, SnapshotStorage? storage})
-    : storage = storage ?? MemoryStorage() {
+  AppState({SnapshotStorage? storage}) : storage = storage ?? MemoryStorage() {
     try {
       final raw = this.storage.read();
       if (raw == null) {
-        final today = dateOnly(now ?? DateTime.now());
-        schedules.addAll(demoSchedules(today));
-        tasks.addAll(demoTasks(today));
         _persist();
       } else {
         isReturning = true;
@@ -61,6 +56,12 @@ class AppState extends ChangeNotifier {
   void _changed() {
     _persist();
     notifyListeners();
+  }
+
+  void clearPlanner() {
+    schedules.clear();
+    tasks.clear();
+    _changed();
   }
 
   void deleteSchedule(int id) {

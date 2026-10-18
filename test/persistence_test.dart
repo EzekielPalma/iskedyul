@@ -1,3 +1,5 @@
+import 'fixtures/seeded_state.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -24,6 +26,25 @@ class UnavailableStorage extends MemoryStorage {
 }
 
 void main() {
+  test('fresh planner starts empty and stays empty after refresh', () {
+    final storage = MemoryStorage();
+    final fresh = AppState(storage: storage);
+    expect(fresh.schedules, isEmpty);
+    expect(fresh.tasks, isEmpty);
+    expect(fresh.isReturning, isFalse);
+    final restored = AppState(storage: storage);
+    expect(restored.schedules, isEmpty);
+    expect(restored.tasks, isEmpty);
+    expect(restored.isReturning, isTrue);
+  });
+  test('clearing a populated planner persists an empty snapshot', () {
+    final storage = MemoryStorage();
+    final state = seededState(storage: storage);
+    state.clearPlanner();
+    final restored = AppState(storage: storage);
+    expect(restored.schedules, isEmpty);
+    expect(restored.tasks, isEmpty);
+  });
   test('refresh restores schedule and task edits, dates, priority, completion and notes', () {
     final storage = MemoryStorage();
     final state = AppState(storage: storage);
@@ -88,7 +109,7 @@ void main() {
     'linked deletion removes only selected schedule, its tasks and notes',
     () {
       final storage = MemoryStorage();
-      final state = AppState(storage: storage);
+      final state = seededState(storage: storage);
       state.deleteSchedule(1);
       final restored = AppState(storage: storage);
       expect(restored.schedules.map((s) => s.id), [2, 3]);
@@ -101,7 +122,7 @@ void main() {
   );
   test('intentionally empty snapshot stays empty across repeated reloads', () {
     final storage = MemoryStorage();
-    final state = AppState(storage: storage);
+    final state = seededState(storage: storage);
     for (final schedule in state.schedules.toList()) {
       state.deleteSchedule(schedule.id);
     }
@@ -127,7 +148,7 @@ void main() {
     }
   });
   test('invalid rows, duplicate IDs, bad dates and orphan tasks are skipped, valid data recovered', () {
-    final source = AppState();
+    final source = seededState();
     final json = jsonDecode(
       encodeSnapshot(source.schedules, source.tasks),
     ) as Map<String, dynamic>;
@@ -150,7 +171,7 @@ void main() {
     final blocked = UnavailableStorage()..failRead = true;
     expect(AppState(storage: blocked).storageWarning, isNotNull);
     final storage = UnavailableStorage();
-    final state = AppState(storage: storage);
+    final state = seededState(storage: storage);
     storage.failWrite = true;
     state.saveNotes(1, 'Unsaved note');
     expect(state.schedule(1).notes, 'Unsaved note');
@@ -165,7 +186,7 @@ void main() {
     'urgency sorting survives reload and completed tasks sort separately',
     () {
       final today = dateOnly(DateTime.now());
-      final source = AppState();
+      final source = seededState();
       StudentTask task(
         int id,
         int offset,

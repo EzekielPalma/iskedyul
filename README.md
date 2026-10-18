@@ -16,7 +16,7 @@ A Flutter Web student planner for a second-year student's solo mobile applicatio
 - Link every task to exactly one schedule, choose a due date and High/Medium/Low priority, and toggle completion.
 - Pending overdue tasks appear first, then priority, then nearest due date; completed tasks appear in a separate section on the dashboard and schedule details. All pending tasks remain accessible in the Tasks tab. “Urgent” includes overdue, due today, and High-priority pending tasks.
 
-On a browser's first visit, sample data is added once with dates relative to the current browser date. After that, your saved data is restored; deleting everything intentionally leaves an empty planner after refresh. Weekly entries are stored as weekdays, not individual dated events. The UI uses grayscale, text status labels, built-in icons and bundled DejaVu fonts (license in `assets/fonts/LICENSE.txt`). Layouts scroll in portrait, landscape and desktop sizes.
+New planners start empty. Add your own classes and tasks; your saved data is restored on return. To remove previously saved sample entries, open Week → Clear planner and confirm. This removes all saved classes, tasks and notes; Cancel keeps them. Weekly entries are stored as weekdays, not individual dated events. The UI uses grayscale, text status labels, built-in icons and bundled DejaVu fonts (license in `assets/fonts/LICENSE.txt`). Layouts scroll in portrait, landscape and desktop sizes.
 
 ## Project approach
 
@@ -33,7 +33,7 @@ Once deployed, open **https://app-iskedyul.github.io/** in a modern browser. Dep
 3. In **Actions**, enable workflows if GitHub asks. Check that the **Flutter Web** workflow finishes successfully. If the `github-pages` environment requires approval, approve its deployment.
 4. Open the deployment URL from the completed action or Settings → Pages.
 
-The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app and packages the Windows download. Pull requests run verification and upload the local artifact but do not deploy. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
+The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app. Windows packaging is paused. Pull requests run verification and upload the local artifact but do not deploy. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
 
 ### Download and run on another laptop
 
@@ -50,7 +50,7 @@ If the browser does not open automatically, visit **http://127.0.0.1:8080**. Win
 
 Do not choose GitHub's auto-generated **Source code** ZIPs to run the app.
 
-If a release has not appeared yet, check the **Flutter Web** workflow's **release** job. The same ready-to-run ZIPs are also under the `iskedyul-laptop-downloads` Actions artifact. Each successful push to `main` builds and publishes the Windows download automatically.
+Windows packaging is currently paused while the hosted app is refined. Existing Windows releases remain available but may be older than the hosted app; new pushes update the web app only. The packaging tools remain in the repository for later use.
 
 ### Optional: bare web build for an existing server
 
@@ -107,13 +107,13 @@ go test -C tool/launcher ./...
 python3 tool/package_web.py
 ```
 
-Packages are written to `build/downloads/`. CI cross-compiles the Windows x64 launcher, uploads the ZIP, and publishes a GitHub release. The static-server handler, web app, and browser behavior are tested in the cloud; the Windows executable should also be tried on a Windows laptop. Normal users download these compiled packages, not this toolchain.
+Packages are written to `build/downloads/`. The packaging tool cross-compiles the Windows x64 launcher. Automatic Windows packaging and releases are paused during web development. The static-server handler, web app, and browser behavior are tested in the cloud; the Windows executable should also be tried on a Windows laptop. Normal users download these compiled packages, not this toolchain.
 
 ## Small project structure
 
 - `lib/main.dart`: theme and app entry point.
 - `lib/data/models.dart`: schedules, tasks, and ordering helpers.
-- `lib/data/demo_data.dart`: sample data, separate from screen code.
+- `test/fixtures/`: sample data used only by tests; no samples are inserted in the app.
 - `lib/data/app_state.dart`: state and save/delete operations using Flutter's ChangeNotifier and InheritedNotifier.
 - `lib/data/snapshot.dart`: versioned JSON serialization, validation, and recovery.
 - `lib/data/storage*.dart`: a small synchronous storage interface, native browser localStorage adapter, and in-memory test implementation.
@@ -127,7 +127,7 @@ There are no third-party runtime dependencies. Forms keep their own draft values
 ## Local saving and recovery
 
 - Data survives refresh and browser restarts when browser storage is available. Use the same browser profile and site origin (scheme, hostname, and port). The new organization address, the old personal Pages address, and a downloaded local build have separate storage; changing local server ports also changes the saved planner.
-- A missing storage key seeds the sample data once. A valid empty snapshot stays empty: samples are not reinserted after you delete all schedules.
+- A missing storage key creates an empty planner. A valid empty snapshot stays empty. Existing saved entries are preserved during updates, including older sample entries; use Week → Clear planner to intentionally remove them.
 - Invalid JSON or an unsupported snapshot starts an empty planner with a visible recovery notice. Valid snapshots containing invalid entries keep valid schedules/tasks and skip malformed rows, duplicate IDs, invalid dates/times, and tasks with missing schedules. Recovery does not overwrite the original snapshot until you make another change.
 - If browser storage is blocked or full, the app remains usable in memory and displays a warning. It does not claim the change was saved; keep the tab open, resolve storage access/space, and make another change to retry saving. Reloading before a successful save loses unsaved changes.
 - Notes are one plain-text field per schedule, limited to 2,000 characters. Titles and subjects are required; schedules must end after they start on the same day. Tasks require one existing linked schedule. Past due dates are allowed and become overdue when pending.

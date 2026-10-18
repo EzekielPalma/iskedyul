@@ -478,6 +478,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (!state.schedules.any((s) => s.weekday == day))
               const Divider(color: Color(0xFFE6E6E6)),
           ],
+          if (state.schedules.isNotEmpty || state.tasks.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final confirmed = await confirmDelete(
+                    context,
+                    'Clear planner?',
+                    'Delete all classes, tasks, and notes? This can’t be undone.',
+                  );
+                  if (confirmed && context.mounted) state.clearPlanner();
+                },
+                icon: const Icon(Icons.delete_sweep_outlined),
+                label: const Text('Clear planner'),
+              ),
+            ),
         ],
         if (tab == 2) ...[
           Section('To do · ${pending.length}'),

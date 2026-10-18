@@ -1,3 +1,5 @@
+import 'fixtures/seeded_state.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iskedyul/data/app_state.dart';
@@ -14,13 +16,48 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 Future<AppState> start(WidgetTester tester) async {
-  final state = AppState();
+  final state = seededState();
   await tester.pumpWidget(ISkedyulApp(state: state));
   await tapText(tester, 'Get Started');
   return state;
 }
 
 void main() {
+  testWidgets('fresh users see empty states and can create their first class', (
+    tester,
+  ) async {
+    final state = AppState();
+    await tester.pumpWidget(ISkedyulApp(state: state));
+    await tapText(tester, 'Get Started');
+    expect(find.text('No classes today.'), findsOneWidget);
+    expect(find.byType(ScheduleCard), findsNothing);
+    await tapText(tester, 'Week');
+    expect(
+      find.text('No classes yet. Add your first schedule.'),
+      findsOneWidget,
+    );
+    await tapText(tester, 'Add Schedule');
+    await tester.enterText(find.byType(TextFormField).first, 'My first class');
+    await tapText(tester, 'Save Schedule');
+    expect(state.schedules.single.subject, 'My first class');
+  });
+  testWidgets('clear planner confirms deletion and cancel preserves entries', (
+    tester,
+  ) async {
+    final state = await start(tester);
+    await tapText(tester, 'Week');
+    await tapText(tester, 'Clear planner');
+    await tapText(tester, 'Cancel');
+    expect(state.schedules.length, 3);
+    await tapText(tester, 'Clear planner');
+    await tapText(tester, 'Delete');
+    expect(state.schedules, isEmpty);
+    expect(state.tasks, isEmpty);
+    expect(
+      find.text('No classes yet. Add your first schedule.'),
+      findsOneWidget,
+    );
+  });
   test('tasks sort overdue before priority, pending before completed', () {
     final today = DateTime(2026, 10, 18);
     StudentTask task(
@@ -48,7 +85,7 @@ void main() {
   });
   testWidgets('returning visits open Today without onboarding', (tester) async {
     final storage = MemoryStorage();
-    final original = AppState(storage: storage);
+    final original = seededState(storage: storage);
     original.saveNotes(1, 'Keep this note.');
     final restored = AppState(storage: storage);
     await tester.pumpWidget(ISkedyulApp(state: restored));
@@ -101,7 +138,7 @@ void main() {
     expect(find.byType(DashboardScreen), findsOneWidget);
   });
   testWidgets('schedule rejects end before start', (tester) async {
-    final state = AppState();
+    final state = seededState();
     state.schedules.add(
       Schedule(
         id: 20,
