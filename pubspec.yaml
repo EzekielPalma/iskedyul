@@ -17,6 +17,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/LICENSE.txt
   fonts:
     - family: StudentSans
       fonts:
