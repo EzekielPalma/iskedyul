@@ -17,17 +17,21 @@ class AppState extends ChangeNotifier {
         tasks.addAll(demoTasks(today));
         _persist();
       } else {
+        isReturning = true;
         try {
           final data = decodeSnapshot(raw);
           schedules.addAll(data.schedules);
           tasks.addAll(data.tasks);
-          if (data.skippedInvalid) recoveryMessage = 'Some invalid saved entries were skipped. Valid entries were recovered.';
+          if (data.skippedInvalid) {
+            recoveryMessage =
+                'Some entries couldn’t be restored. Your valid data is here.';
+          }
         } on FormatException {
-          recoveryMessage = 'Saved data could not be read. Starting empty; your next change will replace the invalid data.';
+          recoveryMessage = 'Saved data couldn’t be opened. Adding an item starts a new planner.';
         }
       }
     } catch (_) {
-      storageWarning = 'Browser storage is unavailable. Changes stay in this session only. Allow storage and make another change to retry.';
+      storageWarning = 'Storage is blocked. Allow browser storage, then edit an item to save.';
     }
     for (final id in [
       ...schedules.map((s) => s.id),
@@ -39,6 +43,7 @@ class AppState extends ChangeNotifier {
   final SnapshotStorage storage;
   final schedules = <Schedule>[];
   final tasks = <StudentTask>[];
+  bool isReturning = false;
   String? recoveryMessage;
   String? storageWarning;
   int _nextId = 10;
@@ -49,7 +54,7 @@ class AppState extends ChangeNotifier {
       storageWarning = null;
       recoveryMessage = null;
     } catch (_) {
-      storageWarning = 'Could not save to this browser. Changes stay in this session only. Free storage space or allow storage, then make another change to retry.';
+      storageWarning = 'Could not save. Keep this tab open. Check browser storage, then edit an item to retry.';
     }
   }
 

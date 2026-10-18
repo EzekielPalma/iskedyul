@@ -144,7 +144,7 @@ void main() {
     final state = AppState(storage: storage);
     expect(state.schedules.length, 3);
     expect(state.tasks.length, 4);
-    expect(state.recoveryMessage, contains('skipped'));
+    expect(state.recoveryMessage, contains('restored'));
   });
   test('unavailable storage and write failures are visible, changes survive in memory and retry succeeds', () {
     final blocked = UnavailableStorage()..failRead = true;

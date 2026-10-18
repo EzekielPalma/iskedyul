@@ -30,27 +30,103 @@ class ISkedyulApp extends StatelessWidget {
           surfaceContainerHighest: Color(0xFFEEEEEE),
           outline: Color(0xFF777777),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+        scaffoldBackgroundColor: const Color(0xFFF7F7F7),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF5F5F5),
+          backgroundColor: Color(0xFFF7F7F7),
+          centerTitle: false,
+          toolbarHeight: 72,
+          titleTextStyle: TextStyle(
+            fontFamily: 'StudentSans',
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
           foregroundColor: Colors.black,
           surfaceTintColor: Colors.transparent,
         ),
         inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFDDDDDD)),
+          ),
+          contentPadding: EdgeInsets.all(18),
           filled: true,
           fillColor: Colors.white,
         ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontFamily: 'StudentSans',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            side: const BorderSide(color: Color(0xFFD5D5D5)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontFamily: 'StudentSans',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            textStyle: const TextStyle(
+              fontFamily: 'StudentSans',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          height: 72,
+          indicatorColor: Colors.black,
+          iconTheme: WidgetStateProperty.resolveWith(
+            (states) => IconThemeData(
+              size: 21,
+              color: states.contains(WidgetState.selected)
+                  ? Colors.white
+                  : const Color(0xFF777777),
+            ),
+          ),
+          labelTextStyle: const WidgetStatePropertyAll(
+            TextStyle(
+              fontFamily: 'StudentSans',
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        checkboxTheme: CheckboxThemeData(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        ),
+        dividerTheme: const DividerThemeData(color: Color(0xFFE6E6E6)),
         cardTheme: CardThemeData(
+          margin: const EdgeInsets.symmetric(vertical: 5),
           color: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0xFFD0D0D0)),
+            side: const BorderSide(color: Color(0xFFE3E3E3)),
           ),
         ),
       ),
-      home: const WelcomeScreen(),
+      home: state.isReturning ? const DashboardScreen() : const WelcomeScreen(),
     ),
   );
 }

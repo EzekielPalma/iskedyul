@@ -37,17 +37,57 @@ Future<bool> confirmDelete(
     false;
 
 class PageFrame extends StatelessWidget {
-  const PageFrame({super.key, required this.title, required this.children});
+  const PageFrame({
+    super.key,
+    required this.title,
+    required this.children,
+    this.navigation,
+    this.scrollController,
+  });
   final String title;
   final List<Widget> children;
+  final Widget? navigation;
+  final ScrollController? scrollController;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
+    appBar: AppBar(
+      title: title == 'iSkedyul'
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_view_week_rounded,
+                    color: Colors.white,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'iSkedyul',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+              ],
+            )
+          : Text(title),
+    ),
+    bottomNavigationBar: navigation,
     body: SingleChildScrollView(
+      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: BoxConstraints(
+            maxWidth: title == 'iSkedyul' ? 820 : 640,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -81,7 +121,7 @@ class Section extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 28, bottom: 12),
+    padding: const EdgeInsets.only(top: 24, bottom: 12),
     child: Text(
       title,
       style: Theme.of(context).textTheme.titleLarge
@@ -96,38 +136,171 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) => PageFrame(
     title: 'iSkedyul',
     children: [
-      const SizedBox(height: 36),
-      const Align(
-        alignment: Alignment.centerLeft,
-        child: Icon(Icons.calendar_month_outlined, size: 64),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: const Color(0xFF171717),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'A LITTLE SPACE FOR YOUR WEEK',
+              style: TextStyle(
+                color: Color(0xFFBBBBBB),
+                fontSize: 10,
+                letterSpacing: 1.7,
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              'Less scattered.\nMore settled.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.8,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              tagline,
+              style: TextStyle(
+                color: Color(0xFFCCCCCC),
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: List.generate(
+                7,
+                (i) => Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: i == 2 ? Colors.white : const Color(0xFF303030),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
+                          style: TextStyle(
+                            color: i == 2 ? Colors.black : Colors.white,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Icon(
+                          i == 2 ? Icons.check : Icons.remove,
+                          size: 15,
+                          color: i == 2
+                              ? Colors.black
+                              : const Color(0xFF777777),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      const Section('A little order for your student week.'),
-      const Text(tagline, style: TextStyle(fontSize: 20, height: 1.5)),
       const SizedBox(height: 24),
-      const Text(
-        'See your classes, keep tasks linked to each subject, and collect quick notes in one calm space.',
-        style: TextStyle(fontSize: 16, height: 1.6),
-      ),
-      const Section('Made for your everyday routine'),
-      const Text(
-        '01  Plan your weekly classes\n\n02  Know what needs your attention\n\n03  Keep your notes close to your schedule',
+      const Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 20,
+        runSpacing: 12,
+        children: [
+          FeatureLabel(Icons.calendar_today_outlined, 'Classes'),
+          FeatureLabel(Icons.check_circle_outline, 'Tasks'),
+          FeatureLabel(Icons.notes_rounded, 'Notes'),
+        ],
       ),
       const SizedBox(height: 32),
       FilledButton(
         onPressed: () => dashboard(context),
         child: const Text('Get Started'),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 14),
       const Text(
-        'Saved on this browser · No account needed.\nYour schedules, tasks, and notes stay on this device.',
+        'No account. Just your week.',
         textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFF666666), fontSize: 12),
       ),
     ],
   );
 }
 
-class DashboardScreen extends StatelessWidget {
+class FeatureLabel extends StatelessWidget {
+  const FeatureLabel(this.icon, this.label, {super.key});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 17),
+      const SizedBox(width: 7),
+      Text(label, style: const TextStyle(fontSize: 12)),
+    ],
+  );
+}
+
+class EmptyCard extends StatelessWidget {
+  const EmptyCard(
+    this.message, {
+    super.key,
+    this.icon = Icons.check_circle_outline,
+  });
+  final String message;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF888888), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFF666666), height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int tab = 0;
+  final scroll = ScrollController();
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  void select(int value) {
+    if (scroll.hasClients) scroll.jumpTo(0);
+    setState(() => tab = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -135,94 +308,232 @@ class DashboardScreen extends StatelessWidget {
     final todays =
         state.schedules.where((s) => s.weekday == today.weekday).toList()
           ..sort((a, b) => minutes(a.start).compareTo(minutes(b.start)));
-    final urgent = state
-        .sortedTasks()
+    final pending = state.sortedTasks().where((t) => !t.completed).toList();
+    final done = state.sortedTasks().where((t) => t.completed).toList();
+    final urgent = pending
         .where(
           (t) =>
-              !t.completed &&
-              (overdue(t, today) ||
-                  t.priority == Priority.high ||
-                  !dateOnly(t.due).isAfter(dateOnly(today))),
+              overdue(t, today) ||
+              t.priority == Priority.high ||
+              !dateOnly(t.due).isAfter(dateOnly(today)),
         )
         .toList();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return PageFrame(
       title: 'iSkedyul',
+      scrollController: scroll,
+      navigation: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: select,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view_rounded),
+            label: 'Today',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_view_week_outlined),
+            selectedIcon: Icon(Icons.calendar_view_week_rounded),
+            label: 'Week',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.check_circle_outline),
+            selectedIcon: Icon(Icons.check_circle),
+            label: 'Tasks',
+          ),
+        ],
+      ),
       children: [
-        const Text(
-          'YOUR STUDENT WEEK',
-          style: TextStyle(letterSpacing: 2, fontSize: 12),
+        const SizedBox(height: 12),
+        Text(
+          '${weekdays[today.weekday - 1].toUpperCase()}  /  ${months[today.month - 1].toUpperCase()} ${today.day}',
+          style: const TextStyle(
+            fontSize: 11,
+            letterSpacing: 1.8,
+            color: Color(0xFF777777),
+          ),
         ),
-        const Section('One week. A clearer head.'),
-        const Text(tagline),
-        const SizedBox(height: 16),
-        const Text(
-          'Saved on this browser · Keep using the same browser and site.',
+        const SizedBox(height: 10),
+        Text(
+          [
+            'Your day, in order.',
+            'Your weekly rhythm.',
+            'A little progress.',
+          ][tab],
+          style: const TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.4,
+            height: 1.25,
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
+        if (tab == 0) ...[
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: const Color(0xFF171717),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              children: [
+                _stat('${todays.length}', 'Classes today'),
+                _stat('${pending.length}', 'To do'),
+                _stat('${done.length}', 'Done'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 10,
+          runSpacing: 10,
           children: [
             FilledButton.icon(
               onPressed: () => open(context, const ScheduleFormScreen()),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add, size: 18),
               label: const Text('Add Schedule'),
             ),
             OutlinedButton.icon(
               onPressed: state.schedules.isEmpty
                   ? null
                   : () => open(context, const TaskFormScreen()),
-              icon: const Icon(Icons.playlist_add),
+              icon: const Icon(Icons.add_task, size: 18),
               label: const Text('Add Task'),
             ),
           ],
         ),
-        Section('Today · ${weekdays[today.weekday - 1]}'),
-        if (todays.isEmpty)
-          const Text('No classes today. Make room for a little rest.'),
-        ...todays.map((s) => ScheduleCard(schedule: s)),
-        Section('Urgent tasks · ${urgent.length}'),
-        const Text(
-          'Pending overdue first, then priority and nearest due date.',
-        ),
-        const SizedBox(height: 8),
-        if (urgent.isEmpty) const Text('All clear! No urgent tasks right now.'),
-        ...urgent.map((t) => TaskCard(task: t)),
-        const Section('Other pending tasks'),
-        if (!state.tasks.any((t) => !t.completed && !urgent.contains(t)))
-          const Text(
-            'No other pending tasks. Add a task from a class when you need one.',
+        if (tab == 0) ...[
+          const Section('On your schedule'),
+          if (todays.isEmpty)
+            const EmptyCard('No classes today.', icon: Icons.wb_sunny_outlined),
+          ...todays.map((s) => ScheduleCard(schedule: s)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(child: Section('Needs attention')),
+              TextButton(
+                onPressed: () => select(2),
+                child: const Text('View all'),
+              ),
+            ],
           ),
-        ...state
-            .sortedTasks()
-            .where((t) => !t.completed && !urgent.contains(t))
-            .map((t) => TaskCard(task: t)),
-        const Section('Completed tasks'),
-        if (!state.tasks.any((t) => t.completed))
-          const Text(
-            'No completed tasks yet. Check off a task when it is done.',
-          ),
-        ...state
-            .sortedTasks()
-            .where((t) => t.completed)
-            .map((t) => TaskCard(task: t)),
-        const Section('Your weekly schedule'),
-        if (state.schedules.isEmpty)
-          const Text(
-            'Your week is a blank page. Add a schedule first, then link tasks to it.',
-          ),
-        const Text('Repeats each week · Select a class for tasks and notes.'),
-        for (var day = 1; day <= 7; day++) ...[
-          Section(weekdays[day - 1]),
-          if (!state.schedules.any((s) => s.weekday == day))
-            const Text('No classes planned.'),
-          ...(state.schedules.where((s) => s.weekday == day).toList()
-                ..sort((a, b) => minutes(a.start).compareTo(minutes(b.start))))
-              .map((s) => ScheduleCard(schedule: s)),
+          if (urgent.isEmpty) const EmptyCard('You’re all caught up.'),
+          ...urgent.take(3).map((t) => TaskCard(task: t)),
+          if (urgent.length > 3)
+            TextButton(
+              onPressed: () => select(2),
+              child: Text('View ${urgent.length - 3} more'),
+            ),
+        ],
+        if (tab == 1) ...[
+          const Section('Your weekly schedule'),
+          if (state.schedules.isEmpty)
+            const EmptyCard(
+              'No classes yet. Add your first schedule.',
+              icon: Icons.calendar_today_outlined,
+            ),
+          for (var day = 1; day <= 7; day++) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 20, bottom: 8),
+              child: Row(
+                children: [
+                  Text(
+                    weekdays[day - 1],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (day == today.weekday) ...[
+                    const SizedBox(width: 8),
+                    const StatusPill('Today', dark: true),
+                  ],
+                  const Spacer(),
+                  if (!state.schedules.any((s) => s.weekday == day))
+                    const Text(
+                      'Free',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
+                    ),
+                ],
+              ),
+            ),
+            ...(state.schedules.where((s) => s.weekday == day).toList()..sort(
+                  (a, b) => minutes(a.start).compareTo(minutes(b.start)),
+                ))
+                .map((s) => ScheduleCard(schedule: s)),
+            if (!state.schedules.any((s) => s.weekday == day))
+              const Divider(color: Color(0xFFE6E6E6)),
+          ],
+        ],
+        if (tab == 2) ...[
+          Section('To do · ${pending.length}'),
+          if (pending.isEmpty)
+            const EmptyCard('Nothing to do. Enjoy the breather.'),
+          ...pending.map((t) => TaskCard(task: t)),
+          Section('Completed · ${done.length}'),
+          if (done.isEmpty) const EmptyCard('No completed tasks yet.'),
+          ...done.map((t) => TaskCard(task: t)),
         ],
       ],
     );
   }
+
+  Widget _stat(String value, String label) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 11),
+        ),
+      ],
+    ),
+  );
+}
+
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.label, {super.key, this.dark = false});
+  final String label;
+  final bool dark;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: dark ? const Color(0xFF222222) : const Color(0xFFF0F0F0),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: dark ? Colors.white : const Color(0xFF555555),
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class ScheduleCard extends StatelessWidget {
@@ -237,8 +548,31 @@ class ScheduleCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            const Icon(Icons.menu_book_outlined),
-            const SizedBox(width: 14),
+            SizedBox(
+              width: 76,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    clock(schedule.start),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    clock(schedule.end),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF888888),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(width: 2, height: 40, color: const Color(0xFF222222)),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,21 +580,40 @@ class ScheduleCard extends StatelessWidget {
                   Text(
                     schedule.subject,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text('${clock(schedule.start)} – ${clock(schedule.end)}'),
+                  const SizedBox(height: 5),
+                  Text(
+                    weekdays[schedule.weekday - 1],
+                    style: const TextStyle(
+                      color: Color(0xFF777777),
+                      fontSize: 11,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 12,
+              color: Color(0xFF888888),
+            ),
           ],
         ),
       ),
     ),
   );
+}
+
+String dueLabel(DateTime due) {
+  final days = dateOnly(due).difference(dateOnly(DateTime.now())).inDays;
+  if (days == 0) return 'Today';
+  if (days == 1) return 'Tomorrow';
+  return shortDate(due);
 }
 
 class TaskCard extends StatelessWidget {
@@ -269,55 +622,90 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final status = task.completed
-        ? 'Completed'
-        : overdue(task, DateTime.now())
-        ? 'Overdue'
-        : 'Pending';
+    final isLate = overdue(task, DateTime.now());
+    final priority = task.priority.name;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: task.completed,
-              semanticLabel: 'Complete ${task.title}',
-              onChanged: (_) => state.toggleTask(task),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Checkbox(
+                value: task.completed,
+                semanticLabel: 'Complete ${task.title}',
+                onChanged: (_) => state.toggleTask(task),
+              ),
             ),
             Expanded(
               child: InkWell(
+                borderRadius: BorderRadius.circular(12),
                 onTap: () => open(context, TaskFormScreen(task: task)),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.4,
+                                fontWeight: FontWeight.w700,
+                                color: task.completed
+                                    ? const Color(0xFF777777)
+                                    : Colors.black,
+                                decoration: task.completed
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.edit_outlined,
+                            size: 15,
+                            color: Color(0xFF888888),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
                       Text(
-                        task.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          decoration: task.completed
-                              ? TextDecoration.lineThrough
-                              : null,
+                        state.schedule(task.scheduleId).subject,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF777777),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(state.schedule(task.scheduleId).subject),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Wrap(
-                        spacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
                         runSpacing: 6,
                         children: [
-                          Text(
+                          StatusPill(
                             '${task.priority == Priority.high
-                                ? '‼'
-                                : task.priority == Priority.medium
-                                ? '!'
-                                : '↓'} ${task.priority.name.toUpperCase()}',
+                                ? '↑'
+                                : task.priority == Priority.low
+                                ? '↓'
+                                : '–'} ${priority[0].toUpperCase()}${priority.substring(1)}',
+                            dark:
+                                task.priority == Priority.high &&
+                                !task.completed,
                           ),
-                          Text('$status · ${shortDate(task.due)}'),
-                          const Text('Edit ↗'),
+                          if (isLate) const StatusPill('Overdue', dark: true),
+                          Text(
+                            task.completed ? 'Done' : dueLabel(task.due),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF777777),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -345,7 +733,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
           const Text('This schedule was deleted.'),
           TextButton(
             onPressed: () => dashboard(context),
-            child: const Text('Back to Dashboard'),
+            child: const Text('Back to Today'),
           ),
         ],
       );
@@ -355,7 +743,17 @@ class ScheduleDetailsScreen extends StatelessWidget {
     return PageFrame(
       title: 'Schedule Details',
       children: [
-        Section(schedule.subject),
+        const SizedBox(height: 12),
+        Text(
+          schedule.subject,
+          style: const TextStyle(
+            fontSize: 26,
+            height: 1.3,
+            letterSpacing: -1,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 14),
         Text('${weekdays[schedule.weekday - 1]} · Every week'),
         const SizedBox(height: 8),
         Text(
@@ -380,15 +778,14 @@ class ScheduleDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
-        Section('Pending tasks · ${tasks.where((t) => !t.completed).length}'),
-        if (!tasks.any((t) => !t.completed))
-          const Text('No linked tasks yet. Add your first one.'),
+        Section('To do · ${tasks.where((t) => !t.completed).length}'),
+        if (!tasks.any((t) => !t.completed)) const Text('No pending tasks.'),
         ...tasks.where((t) => !t.completed).map((t) => TaskCard(task: t)),
-        Section('Completed tasks · ${tasks.where((t) => t.completed).length}'),
+        Section('Completed · ${tasks.where((t) => t.completed).length}'),
         if (!tasks.any((t) => t.completed))
           const Text('No completed tasks yet.'),
         ...tasks.where((t) => t.completed).map((t) => TaskCard(task: t)),
-        const Section('Quick notes'),
+        const Section('Notes'),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -416,7 +813,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
             final confirmed = await confirmDelete(
               context,
               'Delete schedule?',
-              'Delete “${schedule.subject}”? This permanently removes its ${tasks.length} linked task(s) and notes from this browser. This cannot be undone.',
+              'Delete “${schedule.subject}” and its ${tasks.length} linked task(s) and notes? This can’t be undone.',
             );
             if (!context.mounted || !confirmed) return;
             state.deleteSchedule(id);
@@ -428,7 +825,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
         const SizedBox(height: 16),
         OutlinedButton(
           onPressed: () => dashboard(context),
-          child: const Text('Back to Dashboard'),
+          child: const Text('Back to Today'),
         ),
       ],
     );
@@ -518,7 +915,7 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
   Widget build(BuildContext context) => PageFrame(
     title: widget.schedule == null ? 'Add Schedule' : 'Edit Schedule',
     children: [
-      const Text('A weekly class or activity. Keep the details simple.'),
+      const Text('Repeats weekly.'),
       const SizedBox(height: 24),
       Form(
         key: form,
@@ -559,7 +956,7 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
             ),
             FormField<void>(
               validator: (_) => minutes(end) <= minutes(start)
-                  ? 'End time must be after start time (same day).'
+                  ? 'End time must follow start time.'
                   : null,
               builder: (field) => field.hasError
                   ? Padding(
@@ -590,7 +987,7 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute<void>(
                     builder: (_) => ConfirmationScreen(
-                      message: 'Schedule saved successfully.',
+                      message: 'Schedule saved.',
                       scheduleId: id,
                     ),
                   ),
@@ -641,7 +1038,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     return PageFrame(
       title: widget.task == null ? 'Add Task' : 'Edit Task',
       children: [
-        const Text('One task, one class. Give it a clear next step.'),
+        const Text('What needs doing?'),
         const SizedBox(height: 24),
         Form(
           key: form,
@@ -690,10 +1087,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 icon: const Icon(Icons.event_outlined),
                 label: Text('Due date: ${shortDate(due)}'),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Past dates are allowed and marked overdue.'),
-              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<Priority>(
                 initialValue: priority,
                 decoration: const InputDecoration(labelText: 'Priority'),
@@ -724,7 +1118,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute<void>(
                       builder: (_) => ConfirmationScreen(
-                        message: 'Task saved successfully.',
+                        message: 'Task saved.',
                         scheduleId: scheduleId!,
                       ),
                     ),
@@ -774,14 +1168,12 @@ class ConfirmationScreen extends StatelessWidget {
       const SizedBox(height: 32),
       const Icon(Icons.check_circle_outline, size: 72),
       Section(
-        AppScope.of(context).storageWarning == null
-            ? message
-            : 'Updated in this session.',
+        AppScope.of(context).storageWarning == null ? message : 'Updated.',
       ),
       Text(
         AppScope.of(context).storageWarning == null
-            ? 'Saved on this browser. Your changes will be here after refresh.'
-            : 'Browser saving failed. Keep this page open to retain these changes.',
+            ? 'You’re all set.'
+            : 'Not saved. Keep this tab open.',
       ),
       const SizedBox(height: 24),
       FilledButton(
@@ -795,7 +1187,7 @@ class ConfirmationScreen extends StatelessWidget {
       const SizedBox(height: 12),
       OutlinedButton(
         onPressed: () => dashboard(context),
-        child: const Text('Back to Dashboard'),
+        child: const Text('Back to Today'),
       ),
       TextButton(
         onPressed: () => Navigator.of(context).pushReplacement(
@@ -803,7 +1195,7 @@ class ConfirmationScreen extends StatelessWidget {
             builder: (_) => TaskFormScreen(scheduleId: scheduleId),
           ),
         ),
-        child: const Text('Add another task'),
+        child: const Text('Add Task'),
       ),
     ],
   );
