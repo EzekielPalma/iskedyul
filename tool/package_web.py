@@ -28,7 +28,17 @@ with tempfile.TemporaryDirectory() as temporary:
         'If the browser does not open, visit http://127.0.0.1:8080\n'
         'Windows may ask you to approve this unsigned download. Only run it if you trust its source.\n'
         'Your planner is saved in this browser, separately from the hosted site.\n'
+        'The ZIP does not transfer your planner between laptops.\n'
+        'App files, fonts, icons and runtime are bundled; no internet is needed to run them.\n'
         'Use the same browser and address each time. This is a web app, not an Android APK.\n'
+    )
+    revision = os.environ.get('GITHUB_SHA') or subprocess.check_output(
+        ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True
+    ).strip()
+    flutter_version = (ROOT / '.flutter-version').read_text().strip()
+    (package / 'BUILD-INFO.txt').write_text(
+        f'Source commit: {revision}\nFlutter: {flutter_version} stable\n'
+        'Windows x64 launcher: Go 1.27.2\n'
     )
     archive = output / 'iskedyul-windows-x64.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as result:

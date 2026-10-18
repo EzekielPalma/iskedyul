@@ -34,6 +34,12 @@ Today highlights the nearest class, including a class currently in progress. End
 
 The calendar is part of the app and uses only saved browser data—there is no external calendar integration. Icons use Flutter's standard Material set, with text labels for priority and status. New planners still start empty.
 
+## Purpose and concept
+
+iSkedyul helps students keep weekly classes, linked deadlines, and class notes in one place. Students add their classes, attach tasks with due dates and priorities, check the calendar, and mark work complete. Notes stay with the relevant class, and the planner saves in the browser.
+
+We started with a common student problem: schedules, assignments, and notes are often scattered across different places. We chose a focused planner that a second-year student can build and explain independently. Its screens, navigation, validated forms, and local saving follow the course guide. Cloud builds and GitHub delivery let students use it without installing development tools.
+
 ## Project approach
 
 The course rubric guides the concept, responsive screens, navigation, validation and local saving. The current target is Flutter Web, usable in a phone or laptop browser. Development, testing, and compilation happen in the cloud. GitHub hosts the live app and distributes ready-to-run downloads; the user's laptop does not need Flutter, Android Studio, an emulator, or Go.
@@ -49,7 +55,7 @@ Once deployed, open **https://app-iskedyul.github.io/** in a modern browser. Dep
 3. In **Actions**, enable workflows if GitHub asks. Check that the **Flutter Web** workflow finishes successfully. If the `github-pages` environment requires approval, approve its deployment.
 4. Open the deployment URL from the completed action or Settings → Pages.
 
-The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app. Windows packaging is paused. Pull requests run verification and upload the local artifact but do not deploy. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
+The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app. The same verified web build is packaged with a Windows x64 launcher. The workflow runs the packaged executable on a Windows runner and checks its bundled files before publishing a release. Pull requests run verification and upload artifacts but do not deploy or publish releases. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
 
 ### Download and run on another laptop
 
@@ -66,7 +72,7 @@ If the browser does not open automatically, visit **http://127.0.0.1:8080**. Win
 
 Do not choose GitHub's auto-generated **Source code** ZIPs to run the app.
 
-Windows packaging is currently paused while the hosted app is refined. Existing Windows releases remain available but may be older than the hosted app; new pushes update the web app only. The packaging tools remain in the repository for later use.
+Successful pushes to `main` update Pages and publish a Windows ZIP from the same source commit. The release waits for the Windows executable check; a failed check leaves the previous release available. `BUILD-INFO.txt` in the ZIP identifies its source commit. Windows builds target 64-bit x64 laptops only. Internet is needed to download the ZIP; the extracted app runs locally with its runtime, fonts, and icons bundled.
 
 ### Optional: bare web build for an existing server
 
@@ -115,7 +121,7 @@ flutter build web --release --base-href / --no-web-resources-cdn
 
 ### Build the local launchers in the cloud
 
-Only the cloud build machine needs Go **1.27.2**. The launcher uses Go's standard library and adds no Flutter dependencies:
+Only the cloud build machine needs Go **1.27.2**. In the prepared cloud environment, activate it with `source /workspace/.tooling/go-env.sh`. The launcher uses Go's standard library and adds no Flutter dependencies:
 
 ```sh
 # After the root-serving Flutter build:
@@ -123,7 +129,7 @@ go test -C tool/launcher ./...
 python3 tool/package_web.py
 ```
 
-Packages are written to `build/downloads/`. The packaging tool cross-compiles the Windows x64 launcher. Automatic Windows packaging and releases are paused during web development. The static-server handler, web app, and browser behavior are tested in the cloud; the Windows executable should also be tried on a Windows laptop. Normal users download these compiled packages, not this toolchain.
+Packages are written to `build/downloads/`. The packaging tool cross-compiles the Windows x64 launcher. The workflow also runs `tool/check_windows.ps1` on a Windows runner against the actual ZIP, starts its `.exe` from a folder with spaces, and checks HTML, JavaScript, WASM content type, fonts, and icons. Browser interaction and saved-data flows are tested in the cloud; users can then try the complete download on their laptop. Normal users download these compiled packages, not this toolchain.
 
 ## Small project structure
 
@@ -140,7 +146,9 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `test/app_test.dart`: ordering, navigation, forms, delete confirmations, separate completed sections, and responsive layouts.
 - `test/calendar_test.dart`: date/year boundaries, weekly repetition, next-class transitions, deadlines, contextual forms, and timetable navigation.
 - `test/modern_planner_test.dart`: dashboard shortcuts, task filters, month navigation/date picker, 24-hour scrolling, time-slot forms, duration/overlap layout, supported dates, and responsive calendar modes.
-- `tool/launcher/` and `tool/package_web.py`: compiled local server and download packaging (cloud build tools only).
+- `tool/launcher/` and `tool/package_web.py`: compiled local server and Windows download packaging (cloud build tools only).
+- `tool/check_windows.ps1`: smoke check of the packaged executable on a Windows CI runner.
+- `tool/WINDOWS_RELEASE.md`: download and launch instructions attached to each release.
 - `test/persistence_test.dart`: reload simulation, saved edits/completion/notes, cascading deletion, intentionally empty data, malformed saved data, and storage failure/retry.
 
 There are no third-party runtime dependencies. Forms keep their own draft values; Cancel discards them. Each successful mutation saves schedules, tasks, completion status, priorities, dates, and notes together as one versioned JSON snapshot under localStorage key `iskedyul.data.v1`.
