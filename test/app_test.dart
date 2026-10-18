@@ -7,6 +7,7 @@ import 'package:iskedyul/data/models.dart';
 import 'package:iskedyul/main.dart';
 import 'package:iskedyul/data/storage_contract.dart';
 import 'package:iskedyul/screens/screens.dart';
+import 'package:iskedyul/screens/weekly_calendar.dart';
 
 Future<void> tapText(WidgetTester tester, String text) async {
   final target = find.text(text).last;
@@ -16,6 +17,7 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 Future<AppState> start(WidgetTester tester) async {
+  addTearDown(() => tester.pumpWidget(const SizedBox()));
   final state = seededState();
   await tester.pumpWidget(ISkedyulApp(state: state));
   await tapText(tester, 'Get Started');
@@ -26,6 +28,7 @@ void main() {
   testWidgets('fresh users see empty states and can create their first class', (
     tester,
   ) async {
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
     final state = AppState();
     await tester.pumpWidget(ISkedyulApp(state: state));
     await tapText(tester, 'Get Started');
@@ -84,6 +87,7 @@ void main() {
     expect(tasks.map((t) => t.id), [2, 1, 5, 4, 3]);
   });
   testWidgets('returning visits open Today without onboarding', (tester) async {
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
     final storage = MemoryStorage();
     final original = seededState(storage: storage);
     original.saveNotes(1, 'Keep this note.');
@@ -247,7 +251,7 @@ void main() {
       await start(tester);
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Week');
-      expect(find.text('Your weekly schedule'), findsOneWidget);
+      expect(find.byType(WeeklyCalendar), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Tasks');
       expect(find.text('To do · 3'), findsOneWidget);

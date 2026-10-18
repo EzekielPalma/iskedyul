@@ -7,8 +7,8 @@ A Flutter Web student planner for a second-year student's solo mobile applicatio
 ## What you can try
 
 - First visit: Welcome → Get Started. Returning visits open Today.
-- **Today**: class times, daily counts, and urgent tasks.
-- **Week**: the weekly schedule grouped Monday–Sunday.
+- **Today**: Next class (or In progress), Due today, daily counts, and other urgent tasks.
+- **Week**: an interactive weekly calendar with a day selector, previous/next week, and a Today shortcut. Phone/landscape layouts use a daily agenda; wide screens also show a tappable weekly timetable.
 - **Tasks**: all pending tasks, followed by a separate completed section.
 - Open a schedule to see its times, linked tasks, and one editable plain-text notes field.
 - Create, edit, and delete schedules and tasks, with validation, save confirmations, and destructive-delete confirmation. Deleting a schedule also removes its linked tasks and notes. Cancel leaves everything unchanged.
@@ -17,6 +17,18 @@ A Flutter Web student planner for a second-year student's solo mobile applicatio
 - Pending overdue tasks appear first, then priority, then nearest due date; completed tasks appear in a separate section on the dashboard and schedule details. All pending tasks remain accessible in the Tasks tab. “Urgent” includes overdue, due today, and High-priority pending tasks.
 
 New planners start empty. Add your own classes and tasks; your saved data is restored on return. To remove previously saved sample entries, open Week → Clear planner and confirm. This removes all saved classes, tasks and notes; Cancel keeps them. Weekly entries are stored as weekdays, not individual dated events. The UI uses grayscale, text status labels, built-in icons and bundled DejaVu fonts (license in `assets/fonts/LICENSE.txt`). Layouts scroll in portrait, landscape and desktop sizes.
+
+## Weekly calendar flow
+
+1. Open **Week**. Select a day, or use the arrows to browse weeks. **Today** returns to the current date.
+2. **Add Schedule** prefills that day's weekday. The class repeats on that weekday every week; browsing weeks does not create duplicate records.
+3. **Add Task** prefills the selected date. Choose its linked class; the deadline appears on its actual due date, not every week.
+4. Tap a class to open its tasks and notes. On wide screens, classes in the timetable are tappable too. Rows group classes by starting hour and show their full start/end times.
+5. Pending deadlines and completed tasks remain separate. Checking off a task updates the calendar and Today counts immediately.
+
+Today highlights the nearest class, including a class currently in progress. Ended classes move to their next weekly occurrence. This view refreshes every minute and when the app returns from the background. Due today contains pending tasks only; other urgent tasks remain below. Dates and times follow the device's local time.
+
+The calendar is part of the app and uses only saved browser data—there is no external calendar integration. Icons use Flutter's standard Material set, with text labels for priority and status. New planners still start empty.
 
 ## Project approach
 
@@ -113,12 +125,15 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 
 - `lib/main.dart`: theme and app entry point.
 - `lib/data/models.dart`: schedules, tasks, and ordering helpers.
+- `lib/data/calendar.dart`: calendar dates and next-class occurrences.
+- `lib/screens/weekly_calendar.dart`: responsive calendar, timetable, and selected-day agenda.
 - `test/fixtures/`: sample data used only by tests; no samples are inserted in the app.
 - `lib/data/app_state.dart`: state and save/delete operations using Flutter's ChangeNotifier and InheritedNotifier.
 - `lib/data/snapshot.dart`: versioned JSON serialization, validation, and recovery.
 - `lib/data/storage*.dart`: a small synchronous storage interface, native browser localStorage adapter, and in-memory test implementation.
 - `lib/screens/screens.dart`: the six screens and their small shared widgets.
 - `test/app_test.dart`: ordering, navigation, forms, delete confirmations, separate completed sections, and responsive layouts.
+- `test/calendar_test.dart`: date/year boundaries, weekly repetition, next-class transitions, deadlines, contextual forms, and timetable navigation.
 - `tool/launcher/` and `tool/package_web.py`: compiled local server and download packaging (cloud build tools only).
 - `test/persistence_test.dart`: reload simulation, saved edits/completion/notes, cascading deletion, intentionally empty data, malformed saved data, and storage failure/retry.
 

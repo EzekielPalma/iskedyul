@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/app_state.dart';
 import '../data/models.dart';
+import '../data/calendar.dart';
+import 'weekly_calendar.dart';
 
 const tagline = 'Klase, gawain, at notes—ayos sa isang lugar.';
 void open(BuildContext context, Widget screen) =>
@@ -43,11 +47,13 @@ class PageFrame extends StatelessWidget {
     required this.children,
     this.navigation,
     this.scrollController,
+    this.maxWidth = 820,
   });
   final String title;
   final List<Widget> children;
   final Widget? navigation;
   final ScrollController? scrollController;
+  final double maxWidth;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -62,7 +68,7 @@ class PageFrame extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.calendar_view_week_rounded,
+                    Icons.calendar_month,
                     color: Colors.white,
                     size: 19,
                   ),
@@ -86,7 +92,7 @@ class PageFrame extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: title == 'iSkedyul' ? 820 : 640,
+            maxWidth: title == 'iSkedyul' ? maxWidth : 640,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -218,9 +224,9 @@ class WelcomeScreen extends StatelessWidget {
         spacing: 20,
         runSpacing: 12,
         children: [
-          FeatureLabel(Icons.calendar_today_outlined, 'Classes'),
-          FeatureLabel(Icons.check_circle_outline, 'Tasks'),
-          FeatureLabel(Icons.notes_rounded, 'Notes'),
+          FeatureLabel(Icons.calendar_today, 'Classes'),
+          FeatureLabel(Icons.task_alt, 'Tasks'),
+          FeatureLabel(Icons.notes, 'Notes'),
         ],
       ),
       const SizedBox(height: 32),
@@ -254,11 +260,7 @@ class FeatureLabel extends StatelessWidget {
 }
 
 class EmptyCard extends StatelessWidget {
-  const EmptyCard(
-    this.message, {
-    super.key,
-    this.icon = Icons.check_circle_outline,
-  });
+  const EmptyCard(this.message, {super.key, this.icon = Icons.task_alt});
   final String message;
   final IconData icon;
   @override
@@ -282,16 +284,35 @@ class EmptyCard extends StatelessWidget {
 }
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.clock});
+  final DateTime Function()? clock;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   int tab = 0;
+  late final Timer clockTimer;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) setState(() {});
+  }
+
   final scroll = ScrollController();
   @override
   void dispose() {
+    clockTimer.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     scroll.dispose();
     super.dispose();
   }
@@ -304,18 +325,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final today = DateTime.now();
+    final today = widget.clock?.call() ?? DateTime.now();
     final todays =
         state.schedules.where((s) => s.weekday == today.weekday).toList()
           ..sort((a, b) => minutes(a.start).compareTo(minutes(b.start)));
+    final upcoming = nextClass(state.schedules, today);
+    final dueToday = state
+        .sortedTasks()
+        .where((t) => !t.completed && sameDay(t.due, today))
+        .toList();
     final pending = state.sortedTasks().where((t) => !t.completed).toList();
     final done = state.sortedTasks().where((t) => t.completed).toList();
     final urgent = pending
         .where(
           (t) =>
-              overdue(t, today) ||
-              t.priority == Priority.high ||
-              !dateOnly(t.due).isAfter(dateOnly(today)),
+              !sameDay(t.due, today) &&
+              (overdue(t, today) ||
+                  t.priority == Priority.high ||
+                  !dateOnly(t.due).isAfter(dateOnly(today))),
         )
         .toList();
     const months = [
@@ -334,24 +361,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
     return PageFrame(
       title: 'iSkedyul',
+      maxWidth: tab == 1 ? 1120 : 820,
       scrollController: scroll,
       navigation: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: select,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
+            icon: Icon(Icons.today),
+            selectedIcon: Icon(Icons.today),
             label: 'Today',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_view_week_outlined),
-            selectedIcon: Icon(Icons.calendar_view_week_rounded),
+            icon: Icon(Icons.calendar_month),
+            selectedIcon: Icon(Icons.calendar_month),
             label: 'Week',
           ),
           NavigationDestination(
-            icon: Icon(Icons.check_circle_outline),
-            selectedIcon: Icon(Icons.check_circle),
+            icon: Icon(Icons.task_alt),
+            selectedIcon: Icon(Icons.task_alt),
             label: 'Tasks',
           ),
         ],
@@ -398,28 +426,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 20),
         ],
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            FilledButton.icon(
-              onPressed: () => open(context, const ScheduleFormScreen()),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Schedule'),
-            ),
-            OutlinedButton.icon(
-              onPressed: state.schedules.isEmpty
-                  ? null
-                  : () => open(context, const TaskFormScreen()),
-              icon: const Icon(Icons.add_task, size: 18),
-              label: const Text('Add Task'),
-            ),
-          ],
-        ),
+        if (tab != 1)
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: () => open(context, const ScheduleFormScreen()),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Schedule'),
+              ),
+              OutlinedButton.icon(
+                onPressed: state.schedules.isEmpty
+                    ? null
+                    : () => open(context, const TaskFormScreen()),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Task'),
+              ),
+            ],
+          ),
         if (tab == 0) ...[
+          if (upcoming != null) ...[
+            const SizedBox(height: 24),
+            NextClassCard(occurrence: upcoming, now: today),
+          ],
+          const Section('Due today'),
+          if (dueToday.isEmpty)
+            const EmptyCard('No deadlines today.', icon: Icons.task_alt),
+          ...dueToday.map((t) => TaskCard(task: t)),
           const Section('On your schedule'),
           if (todays.isEmpty)
-            const EmptyCard('No classes today.', icon: Icons.wb_sunny_outlined),
+            const EmptyCard('No classes today.', icon: Icons.event_available),
           ...todays.map((s) => ScheduleCard(schedule: s)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -440,44 +477,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
         ],
         if (tab == 1) ...[
-          const Section('Your weekly schedule'),
-          if (state.schedules.isEmpty)
-            const EmptyCard(
-              'No classes yet. Add your first schedule.',
-              icon: Icons.calendar_today_outlined,
-            ),
-          for (var day = 1; day <= 7; day++) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 20, bottom: 8),
-              child: Row(
-                children: [
-                  Text(
-                    weekdays[day - 1],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (day == today.weekday) ...[
-                    const SizedBox(width: 8),
-                    const StatusPill('Today', dark: true),
-                  ],
-                  const Spacer(),
-                  if (!state.schedules.any((s) => s.weekday == day))
-                    const Text(
-                      'Free',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
-                    ),
-                ],
-              ),
-            ),
-            ...(state.schedules.where((s) => s.weekday == day).toList()..sort(
-                  (a, b) => minutes(a.start).compareTo(minutes(b.start)),
-                ))
-                .map((s) => ScheduleCard(schedule: s)),
-            if (!state.schedules.any((s) => s.weekday == day))
-              const Divider(color: Color(0xFFE6E6E6)),
-          ],
+          WeeklyCalendar(
+            schedules: state.schedules,
+            tasks: state.sortedTasks(),
+            scheduleCard: (s) => ScheduleCard(schedule: s),
+            taskCard: (t) => TaskCard(task: t),
+            onOpenSchedule: (s) =>
+                open(context, ScheduleDetailsScreen(id: s.id)),
+            onAddSchedule: (date) =>
+                open(context, ScheduleFormScreen(initialWeekday: date.weekday)),
+            onAddTask: (date) =>
+                open(context, TaskFormScreen(initialDue: date)),
+          ),
           if (state.schedules.isNotEmpty || state.tasks.isNotEmpty)
             Align(
               alignment: Alignment.centerLeft,
@@ -490,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                   if (confirmed && context.mounted) state.clearPlanner();
                 },
-                icon: const Icon(Icons.delete_sweep_outlined),
+                icon: const Icon(Icons.delete_sweep),
                 label: const Text('Clear planner'),
               ),
             ),
@@ -531,9 +542,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class StatusPill extends StatelessWidget {
-  const StatusPill(this.label, {super.key, this.dark = false});
+  const StatusPill(this.label, {super.key, this.dark = false, this.icon});
   final String label;
   final bool dark;
+  final IconData? icon;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -541,13 +553,26 @@ class StatusPill extends StatelessWidget {
       color: dark ? const Color(0xFF222222) : const Color(0xFFF0F0F0),
       borderRadius: BorderRadius.circular(7),
     ),
-    child: Text(
-      label,
-      style: TextStyle(
-        color: dark ? Colors.white : const Color(0xFF555555),
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-      ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(
+            icon,
+            size: 12,
+            color: dark ? Colors.white : const Color(0xFF555555),
+          ),
+          const SizedBox(width: 3),
+        ],
+        Text(
+          label,
+          style: TextStyle(
+            color: dark ? Colors.white : const Color(0xFF555555),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -613,11 +638,7 @@ class ScheduleCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 12,
-              color: Color(0xFF888888),
-            ),
+            const Icon(Icons.chevron_right, size: 12, color: Color(0xFF888888)),
           ],
         ),
       ),
@@ -626,7 +647,12 @@ class ScheduleCard extends StatelessWidget {
 }
 
 String dueLabel(DateTime due) {
-  final days = dateOnly(due).difference(dateOnly(DateTime.now())).inDays;
+  final now = DateTime.now();
+  final days = DateTime.utc(
+    due.year,
+    due.month,
+    due.day,
+  ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
   if (days == 0) return 'Today';
   if (days == 1) return 'Tomorrow';
   return shortDate(due);
@@ -684,7 +710,7 @@ class TaskCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           const Icon(
-                            Icons.edit_outlined,
+                            Icons.edit,
                             size: 15,
                             color: Color(0xFF888888),
                           ),
@@ -705,11 +731,12 @@ class TaskCard extends StatelessWidget {
                         runSpacing: 6,
                         children: [
                           StatusPill(
-                            '${task.priority == Priority.high
-                                ? '↑'
+                            '${priority[0].toUpperCase()}${priority.substring(1)}',
+                            icon: task.priority == Priority.high
+                                ? Icons.priority_high
                                 : task.priority == Priority.low
-                                ? '↓'
-                                : '–'} ${priority[0].toUpperCase()}${priority.substring(1)}',
+                                ? Icons.low_priority
+                                : Icons.drag_handle,
                             dark:
                                 task.priority == Priority.high &&
                                 !task.completed,
@@ -784,7 +811,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () =>
                   open(context, ScheduleFormScreen(schedule: schedule)),
-              icon: const Icon(Icons.edit_outlined),
+              icon: const Icon(Icons.edit),
               label: const Text('Edit Schedule'),
             ),
             FilledButton.icon(
@@ -835,7 +862,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
             state.deleteSchedule(id);
             dashboard(context);
           },
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(Icons.delete),
           label: const Text('Delete Schedule'),
         ),
         const SizedBox(height: 16),
@@ -889,8 +916,9 @@ class _NotesDialogState extends State<NotesDialog> {
 }
 
 class ScheduleFormScreen extends StatefulWidget {
-  const ScheduleFormScreen({super.key, this.schedule});
+  const ScheduleFormScreen({super.key, this.schedule, this.initialWeekday});
   final Schedule? schedule;
+  final int? initialWeekday;
   @override
   State<ScheduleFormScreen> createState() => _ScheduleFormScreenState();
 }
@@ -900,7 +928,10 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
   late final subject = TextEditingController(
     text: widget.schedule?.subject ?? '',
   );
-  late int day = widget.schedule?.weekday ?? DateTime.now().weekday;
+  late int day =
+      widget.schedule?.weekday ??
+      widget.initialWeekday ??
+      DateTime.now().weekday;
   late TimeOfDay start =
       widget.schedule?.start ?? const TimeOfDay(hour: 9, minute: 0);
   late TimeOfDay end =
@@ -1023,9 +1054,15 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
 }
 
 class TaskFormScreen extends StatefulWidget {
-  const TaskFormScreen({super.key, this.task, this.scheduleId});
+  const TaskFormScreen({
+    super.key,
+    this.task,
+    this.scheduleId,
+    this.initialDue,
+  });
   final StudentTask? task;
   final int? scheduleId;
+  final DateTime? initialDue;
   @override
   State<TaskFormScreen> createState() => _TaskFormScreenState();
 }
@@ -1034,7 +1071,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   final form = GlobalKey<FormState>();
   late final title = TextEditingController(text: widget.task?.title ?? '');
   int? scheduleId;
-  late DateTime due = dateOnly(widget.task?.due ?? DateTime.now());
+  late DateTime due = dateOnly(
+    widget.task?.due ?? widget.initialDue ?? DateTime.now(),
+  );
   late Priority priority = widget.task?.priority ?? Priority.medium;
   @override
   void initState() {
@@ -1100,7 +1139,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   );
                   if (picked != null && mounted) setState(() => due = picked);
                 },
-                icon: const Icon(Icons.event_outlined),
+                icon: const Icon(Icons.event),
                 label: Text('Due date: ${shortDate(due)}'),
               ),
               const SizedBox(height: 16),
@@ -1154,7 +1193,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     state.deleteTask(widget.task!.id);
                     dashboard(context);
                   },
-                  icon: const Icon(Icons.delete_outline),
+                  icon: const Icon(Icons.delete),
                   label: const Text('Delete Task'),
                 ),
               TextButton(
@@ -1182,7 +1221,7 @@ class ConfirmationScreen extends StatelessWidget {
     title: 'Saved',
     children: [
       const SizedBox(height: 32),
-      const Icon(Icons.check_circle_outline, size: 72),
+      const Icon(Icons.task_alt, size: 72),
       Section(
         AppScope.of(context).storageWarning == null ? message : 'Updated.',
       ),
@@ -1214,5 +1253,59 @@ class ConfirmationScreen extends StatelessWidget {
         child: const Text('Add Task'),
       ),
     ],
+  );
+}
+
+class NextClassCard extends StatelessWidget {
+  const NextClassCard({super.key, required this.occurrence, required this.now});
+  final ClassOccurrence occurrence;
+  final DateTime now;
+  @override
+  Widget build(BuildContext context) => Card(
+    color: const Color(0xFF171717),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () =>
+          open(context, ScheduleDetailsScreen(id: occurrence.schedule.id)),
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.schedule, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  occurrence.happeningAt(now) ? 'In progress' : 'Next class',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right, color: Colors.white70),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              occurrence.schedule.subject,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 21,
+                height: 1.35,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${sameDay(occurrence.date, now) ? 'Today' : '${weekdays[occurrence.date.weekday - 1]} · ${calendarDate(occurrence.date)}'} · ${clock(occurrence.schedule.start)} – ${clock(occurrence.schedule.end)}',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
