@@ -120,7 +120,6 @@ void main() {
         ),
       ];
       DateTime? selectedScheduleDate;
-      DateTime? selectedTaskDate;
       Schedule? opened;
       await tester.pumpWidget(
         MaterialApp(
@@ -132,8 +131,8 @@ void main() {
                 tasks: tasks,
                 scheduleCard: (s) => Text(s.subject),
                 taskCard: (t) => Text(t.title),
-                onAddSchedule: (date) => selectedScheduleDate = date,
-                onAddTask: (date) => selectedTaskDate = date,
+                onAddSchedule: (_) {},
+                onSelectionChanged: (_, date) => selectedScheduleDate = date,
                 onOpenSchedule: (s) => opened = s,
               ),
             ),
@@ -145,16 +144,13 @@ void main() {
       await tap(tester, find.byKey(const ValueKey('calendar-day-1')));
       expect(find.text('Tuesday class'), findsNWidgets(2));
       expect(find.text('Monday deadline'), findsNothing);
-      await tap(tester, find.text('Add class'));
       expect(selectedScheduleDate, DateTime(2026, 12, 29));
-      await tap(tester, find.text('Add task'));
-      expect(selectedTaskDate, DateTime(2026, 12, 29));
       await tap(tester, find.byTooltip('Next week'));
       expect(find.text('Tuesday class'), findsNWidgets(2));
       expect(find.text('Tuesday · Jan 5'), findsOneWidget);
       await tap(tester, find.byTooltip('Previous week'));
       expect(find.text('Tuesday · Dec 29'), findsOneWidget);
-      await tap(tester, find.text('Today'));
+      await tap(tester, find.byTooltip('Go to today'));
       expect(find.text('Monday deadline'), findsOneWidget);
       expect(opened, isNull);
     },
@@ -180,7 +176,6 @@ void main() {
               scheduleCard: (s) => Text('Agenda: ${s.subject}'),
               taskCard: (t) => Text(t.title),
               onAddSchedule: (_) {},
-              onAddTask: (_) {},
               onOpenSchedule: (s) => opened = s,
             ),
           ),
@@ -202,6 +197,7 @@ void main() {
       await tap(tester, find.text('Get started'));
       await tap(tester, find.text('Calendar').last);
       await tap(tester, find.byKey(const ValueKey('calendar-day-2')));
+      await tap(tester, find.byType(FloatingActionButton));
       await tap(tester, find.text('Add class'));
       final weekday = tester.widget<DropdownButtonFormField<int>>(
         find.byType(DropdownButtonFormField<int>),

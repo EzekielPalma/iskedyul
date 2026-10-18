@@ -1,14 +1,12 @@
 # iSkedyul — Phase 2
 
-**Klase, gawain, at notes—ayos sa isang lugar.**
-
 A Flutter Web student planner for a second-year student's solo mobile application project. Phase 2 adds browser-local persistence to the approved Phase 1 UI. There is no backend, login, external API, or paid service.
 
 ## What you can try
 
 - First visit: Welcome → Get started. Returning visits open Today.
 - **Today**: compact, tappable counts open today’s classes, pending tasks, or completed tasks. A progress bar reflects your actual completed tasks and stays hidden for an empty planner. Next class (or In progress), Due today, and urgent tasks remain below.
-- **Calendar**: Day, Week, and Month views, Mon–Sun labels, previous/next period, a Today shortcut, and a tappable date heading to jump to another date. Day and Week include a scrollable 24-hour timetable.
+- **Calendar**: Day, Week, and Month views, Mon–Sun labels, a centered previous/date/next row, a compact Today icon, and a tappable date heading to jump to another date. Day and Week include a scrollable 24-hour timetable.
 - **Tasks**: To do and Done filters with live counts. Completed tasks stay separate; switching filters never deletes anything.
 - Open a schedule to see its times, linked tasks, and one editable plain-text notes field.
 - Create, edit, and delete schedules and tasks, with validation, save confirmations, and destructive-delete confirmation. Deleting a schedule also removes its linked tasks and notes. Cancel leaves everything unchanged.
@@ -23,10 +21,12 @@ New planners start empty. Add your own classes and tasks; your saved data is res
 1. On **Today**, tap **Classes today** to open the daily calendar, **To do** for pending tasks, or **Done** for completed tasks. Counts are interactive shortcuts with standard Material icons and visible chevrons. Empty planners show zeros without fake progress or sample entries.
 2. Open **Calendar** and select **Day**, **Week**, or **Month**. Arrows move by the selected period. Tap the date heading to choose any date from 2000–2100; **Today** returns to the current date.
 3. Week shows **Mon, Tue, Wed, Thu, Fri, Sat, Sun**. On phones, choose a weekday to see its full-width daily timetable; on wide screens, see all seven days side by side. Month shows weekly class occurrences and dated pending deadlines; tap any date to open its day.
-4. Scroll the timetable through **00:00–24:00**, with half-hour guides. Class positions and heights follow their actual start times and durations. Simultaneous cards use separate lanes so they remain selectable; this does not perform conflict detection. **Now** returns to the current hour for a view containing today; other dates start at 08:00.
-5. Tap an empty time slot to open **Add class** with its weekday and half-hour start prefilled. **Add class** also works without selecting a slot. Classes repeat on their weekday every week; browsing never creates duplicate records. The suggested end is one hour later, capped at 23:59, and remains editable.
-6. **Add task** prefills the selected date. Choose its linked class; the deadline appears on its actual due date, not every week. This button becomes available after the first class is added.
+4. Scroll the complete day from **12:00 AM through the following midnight**, using AM/PM labels and half-hour guides. Use **Expand timetable** to fill the app viewport. In expanded Week mode, swipe horizontally to see all seven days; the time labels stay fixed. Browser and Android system bars remain controlled by the browser and operating system. Class positions and heights follow their actual start times and durations. Simultaneous cards use separate lanes so they remain selectable; this does not perform conflict detection. **Now** returns to the current hour for a view containing today; other dates start at 8 AM.
+5. Tap an empty time slot to open **Add class** with its weekday and half-hour start prefilled. The floating **+** button opens an Add class / Add task menu without taking space in the calendar header. The menu explains why tasks need a class first. Classes repeat on their weekday every week; browsing never creates duplicate records. The suggested end is one hour later, capped at 11:59 PM, and remains editable.
+6. Choose **+ → Add task** to prefill the selected date. Choose its linked class; the deadline appears on its actual due date, not every week. This button becomes available after the first class is added.
 7. Tap a class in the timetable or agenda to open its linked tasks and notes. Pending deadlines and completed tasks remain separate. Checking a task updates counts and progress immediately, and saves it locally.
+
+Calendar view and date stay available as you navigate and are included in calendar URLs so refreshing that view restores them. The inline and expanded timetable share their vertical scroll position during the session. Browser Back/Forward, including Android browser Back, follow app routes; forms, creation menus, notes, date/time pickers, and deletion confirmations have history entries. Back discards an unsaved form or notes draft; cancelling a picker keeps the underlying form. At the root, Back remains normal browser navigation.
 
 The interface uses concise sentence-case actions, bordered cards, grayscale selection states, and standard Material buttons with at least 48-pixel control heights. Weekday/date cells and timetable cards use accessible descriptive labels. Very short timetable events stay compact; the agenda provides full-size class cards below.
 
@@ -134,6 +134,9 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 ## Small project structure
 
 - `lib/main.dart`: theme and app entry point.
+- `lib/app_router.dart`: browser-aware screen, menu, and dialog routes.
+- `lib/screens/dialog_routes.dart`: date/time pickers and modal dialog pages with Back support.
+- `lib/screens/timetable_screen.dart`: expanded timetable with horizontal week scrolling.
 - `lib/data/models.dart`: schedules, tasks, and ordering helpers.
 - `lib/data/calendar.dart`: calendar dates and next-class occurrences.
 - `lib/screens/weekly_calendar.dart`: day/week/month navigation, date selection, and selected-day agenda.
@@ -145,13 +148,14 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `lib/screens/screens.dart`: the six screens and their small shared widgets.
 - `test/app_test.dart`: ordering, navigation, forms, delete confirmations, separate completed sections, and responsive layouts.
 - `test/calendar_test.dart`: date/year boundaries, weekly repetition, next-class transitions, deadlines, contextual forms, and timetable navigation.
+- `test/mobile_flow_test.dart`: floating creation, Back/cancellation, AM/PM boundaries, expanded layouts, and shared timetable position.
 - `test/modern_planner_test.dart`: dashboard shortcuts, task filters, month navigation/date picker, 24-hour scrolling, time-slot forms, duration/overlap layout, supported dates, and responsive calendar modes.
 - `tool/launcher/` and `tool/package_web.py`: compiled local server and Windows download packaging (cloud build tools only).
 - `tool/check_windows.ps1`: smoke check of the packaged executable on a Windows CI runner.
 - `tool/WINDOWS_RELEASE.md`: download and launch instructions attached to each release.
 - `test/persistence_test.dart`: reload simulation, saved edits/completion/notes, cascading deletion, intentionally empty data, malformed saved data, and storage failure/retry.
 
-There are no third-party runtime dependencies. Forms keep their own draft values; Cancel discards them. Each successful mutation saves schedules, tasks, completion status, priorities, dates, and notes together as one versioned JSON snapshot under localStorage key `iskedyul.data.v1`.
+Routing uses the Flutter-maintained `go_router` package, pinned to 17.0.1. Hash-based routes work on Pages and local static servers without server rewrites. App state continues to use Flutter’s built-in ChangeNotifier and InheritedNotifier. Forms keep their own draft values; Cancel discards them. Each successful mutation saves schedules, tasks, completion status, priorities, dates, and notes together as one versioned JSON snapshot under localStorage key `iskedyul.data.v1`.
 
 ## Local saving and recovery
 

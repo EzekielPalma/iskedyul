@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/calendar.dart';
 import '../data/models.dart';
 import 'day_timeline.dart';
+import 'timetable_screen.dart';
+import 'dialog_routes.dart';
 
 // Dated views of weekly classes; browsing never duplicates stored records.
 class WeeklyCalendar extends StatefulWidget {
@@ -13,22 +16,22 @@ class WeeklyCalendar extends StatefulWidget {
     required this.scheduleCard,
     required this.taskCard,
     required this.onAddSchedule,
-    required this.onAddTask,
     required this.onOpenSchedule,
     this.today,
     this.initialMode = CalendarMode.week,
     this.initialDate,
     this.onSelectionChanged,
     this.onAddTimeSlot,
+    this.timelineOffset,
   });
   final List<Schedule> schedules;
   final List<StudentTask> tasks;
   final Widget Function(Schedule) scheduleCard;
   final Widget Function(StudentTask) taskCard;
   final ValueChanged<DateTime> onAddSchedule;
-  final ValueChanged<DateTime> onAddTask;
   final ValueChanged<Schedule> onOpenSchedule;
   final DateTime? today;
+  final ValueNotifier<double?>? timelineOffset;
   final CalendarMode initialMode;
   final DateTime? initialDate;
   final void Function(CalendarMode, DateTime)? onSelectionChanged;
@@ -38,6 +41,45 @@ class WeeklyCalendar extends StatefulWidget {
 }
 
 class _WeeklyCalendarState extends State<WeeklyCalendar> {
+  final ownOffset = ValueNotifier<double?>(null);
+  ValueNotifier<double?> get offsetMemory => widget.timelineOffset ?? ownOffset;
+  @override
+  void didUpdateWidget(covariant WeeklyCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialMode != widget.initialMode) mode = widget.initialMode;
+    if (oldWidget.initialDate != widget.initialDate &&
+        widget.initialDate != null) {
+      selected = dateOnly(widget.initialDate!);
+    }
+  }
+
+  @override
+  void dispose() {
+    ownOffset.dispose();
+    super.dispose();
+  }
+
+  void expand() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.push<void>(
+        Uri(
+          path: '/timetable',
+          queryParameters: {
+            'date': selected.toIso8601String().split('T').first,
+            'view': mode.name,
+          },
+        ).toString(),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TimetableScreen(date: selected, mode: mode),
+        ),
+      );
+    }
+  }
+
   late DateTime selected = dateOnly(widget.initialDate ?? today);
   late CalendarMode mode = widget.initialMode;
   DateTime get today => dateOnly(widget.today ?? DateTime.now());
@@ -61,13 +103,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
       : shiftDay(selected, amount * (mode == CalendarMode.week ? 7 : 1));
 
   Future<void> pickDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: selected,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100, 12, 31),
-      helpText: 'Go to date',
-    );
+    final date = await pickPlannerDate(context, selected, help: 'Go to date');
     if (date != null && mounted) choose(date);
   }
 
@@ -87,40 +123,46 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<CalendarMode>(
-          segments: const [
-            ButtonSegment(value: CalendarMode.day, label: Text('Day')),
-            ButtonSegment(value: CalendarMode.week, label: Text('Week')),
-            ButtonSegment(value: CalendarMode.month, label: Text('Month')),
-          ],
-          selected: {mode},
-          showSelectedIcon: false,
-          style: SegmentedButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            selectedBackgroundColor: Colors.black,
-            selectedForegroundColor: Colors.white,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-          onSelectionChanged: (value) => choose(selected, value.single),
-        ),
-        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  key: const ValueKey('calendar-period'),
-                  onPressed: pickDate,
-                  child: Text(heading, style: const TextStyle(fontSize: 14)),
+              child: SegmentedButton<CalendarMode>(
+                segments: const [
+                  ButtonSegment(value: CalendarMode.day, label: Text('Day')),
+                  ButtonSegment(value: CalendarMode.week, label: Text('Week')),
+                  ButtonSegment(
+                    value: CalendarMode.month,
+                    label: Text('Month'),
+                  ),
+                ],
+                selected: {mode},
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  selectedBackgroundColor: Colors.black,
+                  selectedForegroundColor: Colors.white,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
+                onSelectionChanged: (value) => choose(selected, value.single),
               ),
             ),
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              tooltip: 'Go to today',
+              onPressed: () => choose(today),
+              icon: const Icon(Icons.today, size: 20),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
             IconButton(
               tooltip: 'Previous ${mode.name}',
               onPressed: supportedDate(offset(-1))
@@ -128,38 +170,26 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
                   : null,
               icon: const Icon(Icons.chevron_left),
             ),
+            Expanded(
+              child: TextButton(
+                key: const ValueKey('calendar-period'),
+                onPressed: pickDate,
+                child: Text(
+                  heading,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Next ${mode.name}',
               onPressed: supportedDate(offset(1))
                   ? () => choose(offset(1))
                   : null,
               icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: () => choose(today),
-            icon: const Icon(Icons.today, size: 18),
-            label: const Text('Today'),
-          ),
-        ),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            FilledButton.icon(
-              onPressed: () => widget.onAddSchedule(selected),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add class'),
-            ),
-            OutlinedButton.icon(
-              onPressed: widget.schedules.isEmpty
-                  ? null
-                  : () => widget.onAddTask(selected),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add task'),
             ),
           ],
         ),
@@ -171,6 +201,8 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
           LayoutBuilder(
             builder: (context, constraints) => DayTimeline(
               key: const ValueKey('weekly-timetable'),
+              position: offsetMemory,
+              onExpand: expand,
               days: mode == CalendarMode.week && constraints.maxWidth >= 860
                   ? days
                   : [selected],

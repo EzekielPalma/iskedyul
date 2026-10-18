@@ -2,17 +2,36 @@ import 'package:flutter/material.dart';
 
 import 'data/app_state.dart';
 import 'data/storage.dart';
-import 'screens/screens.dart';
+import 'app_router.dart';
+
+import 'package:go_router/go_router.dart';
 
 void main() => runApp(ISkedyulApp(state: AppState(storage: createStorage())));
 
-class ISkedyulApp extends StatelessWidget {
+class ISkedyulApp extends StatefulWidget {
   const ISkedyulApp({super.key, required this.state});
   final AppState state;
   @override
+  State<ISkedyulApp> createState() => _ISkedyulAppState();
+}
+
+class _ISkedyulAppState extends State<ISkedyulApp> {
+  late final GoRouter router = createAppRouter(widget.state);
+  @override
+  void dispose() {
+    router.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => AppScope(
-    state: state,
-    child: MaterialApp(
+    state: widget.state,
+    child: MaterialApp.router(
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+        child: child!,
+      ),
       title: 'iSkedyul',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -128,6 +147,11 @@ class ISkedyulApp extends StatelessWidget {
             ),
           ),
         ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 2,
+        ),
         checkboxTheme: CheckboxThemeData(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
@@ -142,7 +166,6 @@ class ISkedyulApp extends StatelessWidget {
           ),
         ),
       ),
-      home: state.isReturning ? const DashboardScreen() : const WelcomeScreen(),
     ),
   );
 }

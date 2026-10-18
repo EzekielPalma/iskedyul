@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'models.dart';
 
 const monthNames = [
@@ -80,8 +82,8 @@ const fullMonthNames = [
   'November',
   'December',
 ];
-String time24(int minute) =>
-    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+String time12(int minute) =>
+    clock(TimeOfDay(hour: (minute ~/ 60) % 24, minute: minute % 60));
 DateTime shiftMonth(DateTime date, int offset) {
   final first = DateTime(date.year, date.month + offset);
   final lastDay = DateTime(first.year, first.month + 1, 0).day;

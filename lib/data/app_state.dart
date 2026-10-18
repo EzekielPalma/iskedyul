@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'models.dart';
+import 'calendar.dart';
 import 'snapshot.dart';
 import 'storage_contract.dart';
 
@@ -35,6 +36,10 @@ class AppState extends ChangeNotifier {
       if (id >= _nextId) _nextId = id + 1;
     }
   }
+  // View choices live for this session; calendar URLs also restore on refresh.
+  CalendarMode calendarMode = CalendarMode.week;
+  DateTime? calendarDate;
+  final timelineOffset = ValueNotifier<double?>(null);
   final SnapshotStorage storage;
   final schedules = <Schedule>[];
   final tasks = <StudentTask>[];

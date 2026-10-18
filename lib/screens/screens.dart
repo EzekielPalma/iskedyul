@@ -1,42 +1,182 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/app_state.dart';
 import '../data/models.dart';
 import '../data/calendar.dart';
 import 'weekly_calendar.dart';
+import 'dialog_routes.dart';
 
-const tagline = 'Klase, gawain, at notes—ayos sa isang lugar.';
-void open(BuildContext context, Widget screen) =>
+String? screenLocation(Widget screen) => switch (screen) {
+  ScheduleDetailsScreen(:final id) => '/class/$id',
+  ScheduleFormScreen(
+    :final schedule,
+    :final initialWeekday,
+    :final initialStart,
+  ) =>
+    schedule != null
+        ? '/class/${schedule.id}/edit'
+        : Uri(
+            path: '/class/new',
+            queryParameters: {
+              if (initialWeekday != null) 'weekday': '$initialWeekday',
+              if (initialStart != null) 'time': '${minutes(initialStart)}',
+            },
+          ).toString(),
+  TaskFormScreen(:final task, :final scheduleId, :final initialDue) =>
+    task != null
+        ? '/task/${task.id}/edit'
+        : Uri(
+            path: '/task/new',
+            queryParameters: {
+              if (scheduleId != null) 'class': '$scheduleId',
+              if (initialDue != null)
+                'date': initialDue.toIso8601String().split('T').first,
+            },
+          ).toString(),
+  ConfirmationScreen(:final scheduleId, :final message) =>
+    '/saved/$scheduleId?kind=${message.startsWith('Task') ? 'task' : 'class'}',
+  _ => null,
+};
+void open(BuildContext context, Widget screen) {
+  final router = GoRouter.maybeOf(context);
+  final location = screenLocation(screen);
+  if (router != null && location != null) {
+    router.push<void>(location);
+  } else {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
-void dashboard(BuildContext context) => Navigator.of(context)
-    .pushAndRemoveUntil(
+  }
+}
+
+void replaceScreen(BuildContext context, Widget screen) {
+  final router = GoRouter.maybeOf(context);
+  final location = screenLocation(screen);
+  if (router != null && location != null) {
+    // Replace browser history too, so Back skips the dismissed creation menu
+    // and a saved form never returns as an unsaved draft.
+    Router.neglect(context, () => router.replace<void>(location));
+  } else {
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+}
+
+void dashboard(BuildContext context) {
+  AppScope.of(context).isReturning = true;
+  final router = GoRouter.maybeOf(context);
+  if (router != null) {
+    Router.neglect(context, () => router.go('/?tab=today'));
+  } else {
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const DashboardScreen()),
       (_) => false,
     );
+  }
+}
+
+class CreateFab extends StatelessWidget {
+  const CreateFab({super.key, this.date});
+  final DateTime? date;
+  @override
+  Widget build(BuildContext context) => FloatingActionButton(
+    tooltip: 'Add',
+    heroTag: null,
+    onPressed: () {
+      final router = GoRouter.maybeOf(context);
+      if (router != null) {
+        router.push<void>(
+          Uri(
+            path: '/add',
+            queryParameters: {
+              if (date != null)
+                'date': date!.toIso8601String().split('T').first,
+            },
+          ).toString(),
+        );
+      } else {
+        showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          useSafeArea: true,
+          builder: (_) => AddMenu(date: date),
+        );
+      }
+    },
+    child: const Icon(Icons.add),
+  );
+}
+
+class AddMenuPage extends Page<void> {
+  const AddMenuPage({super.key, this.date});
+  final DateTime? date;
+  @override
+  Route<void> createRoute(BuildContext context) => ModalBottomSheetRoute<void>(
+    settings: this,
+    isScrollControlled: false,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (_) => AddMenu(date: date),
+  );
+}
+
+class AddMenu extends StatelessWidget {
+  const AddMenu({super.key, this.date});
+  final DateTime? date;
+  @override
+  Widget build(BuildContext context) {
+    final hasClasses = AppScope.of(context).schedules.isNotEmpty;
+    void choose(Widget screen) {
+      if (GoRouter.maybeOf(context) != null) {
+        replaceScreen(context, screen);
+      } else {
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        navigator.push(MaterialPageRoute<void>(builder: (_) => screen));
+      }
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text('Add class'),
+              onTap: () =>
+                  choose(ScheduleFormScreen(initialWeekday: date?.weekday)),
+            ),
+            ListTile(
+              enabled: hasClasses,
+              leading: const Icon(Icons.task_alt),
+              title: const Text('Add task'),
+              subtitle: hasClasses ? null : const Text('Add a class first.'),
+              onTap: hasClasses
+                  ? () => choose(TaskFormScreen(initialDue: date))
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 Future<bool> confirmDelete(
   BuildContext context,
   String title,
   String message,
 ) async =>
-    await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
-          ),
-        ],
+    await plannerDialog<bool>(
+      context,
+      Uri(
+        path: '/confirm-delete',
+        queryParameters: {'title': title, 'message': message},
       ),
+      (context) => deleteDialog(context, title, message),
     ) ??
     false;
 
@@ -46,12 +186,14 @@ class PageFrame extends StatelessWidget {
     required this.title,
     required this.children,
     this.navigation,
+    this.floatingActionButton,
     this.scrollController,
     this.maxWidth = 820,
   });
   final String title;
   final List<Widget> children;
   final Widget? navigation;
+  final Widget? floatingActionButton;
   final ScrollController? scrollController;
   final double maxWidth;
   @override
@@ -86,9 +228,15 @@ class PageFrame extends StatelessWidget {
           : Text(title),
     ),
     bottomNavigationBar: navigation,
+    floatingActionButton: floatingActionButton,
     body: SingleChildScrollView(
       controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        floatingActionButton == null ? 36 : 100,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -153,7 +301,7 @@ class WelcomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'A LITTLE SPACE FOR YOUR WEEK',
+              'WELCOME',
               style: TextStyle(
                 color: Color(0xFFBBBBBB),
                 fontSize: 10,
@@ -162,22 +310,13 @@ class WelcomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             const Text(
-              'Less scattered.\nMore settled.',
+              'Your week,\norganized.',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 36,
                 height: 1.15,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -1.8,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              tagline,
-              style: TextStyle(
-                color: Color(0xFFCCCCCC),
-                fontSize: 14,
-                height: 1.6,
               ),
             ),
             const SizedBox(height: 32),
@@ -284,16 +423,27 @@ class EmptyCard extends StatelessWidget {
 }
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.clock});
+  const DashboardScreen({
+    super.key,
+    this.clock,
+    this.initialTab = 0,
+    this.initialMode,
+    this.initialDate,
+    this.initialDone = false,
+  });
   final DateTime Function()? clock;
+  final int initialTab;
+  final CalendarMode? initialMode;
+  final DateTime? initialDate;
+  final bool initialDone;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  int tab = 0;
-  bool showDone = false;
+  late int tab = widget.initialTab;
+  late bool showDone = widget.initialDone;
   CalendarMode calendarMode = CalendarMode.week;
   DateTime? calendarSelection;
   late final Timer clockTimer;
@@ -311,6 +461,44 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (state == AppLifecycleState.resumed && mounted) setState(() {});
   }
 
+  bool restoredView = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!restoredView) {
+      final state = AppScope.of(context);
+      calendarMode = widget.initialMode ?? state.calendarMode;
+      calendarSelection = widget.initialDate ?? state.calendarDate;
+      restoredView = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    tab = widget.initialTab;
+    showDone = widget.initialDone;
+    calendarMode = widget.initialMode ?? calendarMode;
+    calendarSelection = widget.initialDate ?? calendarSelection;
+  }
+
+  String rootLocation() => Uri(
+    path: '/',
+    queryParameters: {
+      'tab': ['today', 'calendar', 'tasks'][tab],
+      if (showDone) 'done': '1',
+      'view': calendarMode.name,
+      if (calendarSelection != null)
+        'date': calendarSelection!.toIso8601String().split('T').first,
+    },
+  ).toString();
+  void updateUrl() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      Router.neglect(context, () => router.go(rootLocation()));
+    }
+  }
+
   final scroll = ScrollController();
   @override
   void dispose() {
@@ -323,6 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   void select(int value) {
     if (scroll.hasClients) scroll.jumpTo(0);
     setState(() => tab = value);
+    GoRouter.maybeOf(context)?.go(rootLocation());
   }
 
   @override
@@ -366,6 +555,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       title: 'iSkedyul',
       maxWidth: tab == 1 ? 1120 : 820,
       scrollController: scroll,
+      floatingActionButton: CreateFab(
+        date: tab == 1 ? calendarSelection : null,
+      ),
       navigation: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: select,
@@ -388,16 +580,18 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       ),
       children: [
-        const SizedBox(height: 12),
-        Text(
-          '${weekdays[today.weekday - 1].toUpperCase()}  /  ${months[today.month - 1].toUpperCase()} ${today.day}',
-          style: const TextStyle(
-            fontSize: 11,
-            letterSpacing: 1.8,
-            color: Color(0xFF777777),
+        if (tab != 1) ...[
+          const SizedBox(height: 12),
+          Text(
+            '${weekdays[today.weekday - 1].toUpperCase()}  /  ${months[today.month - 1].toUpperCase()} ${today.day}',
+            style: const TextStyle(
+              fontSize: 11,
+              letterSpacing: 1.8,
+              color: Color(0xFF777777),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ],
         Text(
           ['Today', 'Calendar', 'Tasks'][tab],
           style: const TextStyle(
@@ -484,25 +678,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
           const SizedBox(height: 20),
         ],
-        if (tab != 1)
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.icon(
-                onPressed: () => open(context, const ScheduleFormScreen()),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add class'),
-              ),
-              OutlinedButton.icon(
-                onPressed: state.schedules.isEmpty
-                    ? null
-                    : () => open(context, const TaskFormScreen()),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add task'),
-              ),
-            ],
-          ),
         if (tab == 0) ...[
           if (upcoming != null) ...[
             const SizedBox(height: 24),
@@ -543,11 +718,17 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (tab == 1) ...[
           WeeklyCalendar(
             today: today,
+            timelineOffset: state.timelineOffset,
             initialMode: calendarMode,
             initialDate: calendarSelection,
             onSelectionChanged: (mode, date) {
-              calendarMode = mode;
-              calendarSelection = date;
+              if (calendarSelection == null ||
+                  !sameDay(calendarSelection!, date)) {
+                state.timelineOffset.value = null;
+              }
+              calendarMode = state.calendarMode = mode;
+              calendarSelection = state.calendarDate = date;
+              updateUrl();
             },
             onAddTimeSlot: (date, time) => open(
               context,
@@ -564,8 +745,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 open(context, ScheduleDetailsScreen(id: s.id)),
             onAddSchedule: (date) =>
                 open(context, ScheduleFormScreen(initialWeekday: date.weekday)),
-            onAddTask: (date) =>
-                open(context, TaskFormScreen(initialDue: date)),
           ),
           if (state.schedules.isNotEmpty || state.tasks.isNotEmpty)
             Align(
@@ -604,8 +783,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
             ),
-            onSelectionChanged: (value) =>
-                setState(() => showDone = value.single),
+            onSelectionChanged: (value) {
+              setState(() => showDone = value.single);
+              updateUrl();
+            },
           ),
           const SizedBox(height: 16),
           if (showDone && done.isEmpty)
@@ -992,9 +1173,10 @@ class ScheduleDetailsScreen extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: () async {
-              final value = await showDialog<String>(
-                context: context,
-                builder: (_) => NotesDialog(notes: schedule.notes),
+              final value = await plannerDialog<String>(
+                context,
+                Uri(path: '/class/$id/notes'),
+                (_) => NotesDialog(notes: schedule.notes),
               );
               if (value != null) state.saveNotes(id, value);
             },
@@ -1106,10 +1288,7 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
   }
 
   Future<void> pickTime(bool isStart) async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: isStart ? start : end,
-    );
+    final time = await pickPlannerTime(context, isStart ? start : end);
     if (time != null && mounted) {
       setState(() {
         if (isStart) {
@@ -1194,13 +1373,9 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
                     notes: widget.schedule?.notes ?? '',
                   ),
                 );
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ConfirmationScreen(
-                      message: 'Class saved.',
-                      scheduleId: id,
-                    ),
-                  ),
+                replaceScreen(
+                  context,
+                  ConfirmationScreen(message: 'Class saved.', scheduleId: id),
                 );
               },
               child: const Text('Save class'),
@@ -1293,12 +1468,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: due,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100, 12, 31),
-                  );
+                  final picked = await pickPlannerDate(context, due);
                   if (picked != null && mounted) setState(() => due = picked);
                 },
                 icon: const Icon(Icons.event),
@@ -1332,12 +1502,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       completed: widget.task?.completed ?? false,
                     ),
                   );
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ConfirmationScreen(
-                        message: 'Task saved.',
-                        scheduleId: scheduleId!,
-                      ),
+                  replaceScreen(
+                    context,
+                    ConfirmationScreen(
+                      message: 'Task saved.',
+                      scheduleId: scheduleId!,
                     ),
                   );
                 },
@@ -1394,11 +1563,8 @@ class ConfirmationScreen extends StatelessWidget {
       ),
       const SizedBox(height: 24),
       FilledButton(
-        onPressed: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => ScheduleDetailsScreen(id: scheduleId),
-          ),
-        ),
+        onPressed: () =>
+            replaceScreen(context, ScheduleDetailsScreen(id: scheduleId)),
         child: const Text('View class'),
       ),
       const SizedBox(height: 12),
@@ -1407,11 +1573,8 @@ class ConfirmationScreen extends StatelessWidget {
         child: const Text('Back to today'),
       ),
       TextButton(
-        onPressed: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => TaskFormScreen(scheduleId: scheduleId),
-          ),
-        ),
+        onPressed: () =>
+            replaceScreen(context, TaskFormScreen(scheduleId: scheduleId)),
         child: const Text('Add task'),
       ),
     ],

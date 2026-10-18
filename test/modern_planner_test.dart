@@ -38,7 +38,6 @@ Widget calendar({
         scheduleCard: (s) => Text('Agenda ${s.subject}'),
         taskCard: (t) => Text(t.title),
         onAddSchedule: (_) {},
-        onAddTask: (_) {},
         onOpenSchedule: (_) {},
         onAddTimeSlot: onSlot,
       ),
@@ -136,7 +135,7 @@ void main() {
       expect(find.text('Monday · Jan 4'), findsOneWidget);
       await tap(tester, find.byTooltip('Next day'));
       expect(find.text('Tuesday · Jan 5'), findsOneWidget);
-      await tap(tester, find.text('Today'));
+      await tap(tester, find.byTooltip('Go to today'));
       expect(find.text('Monday · Oct 19'), findsOneWidget);
     },
   );
@@ -192,12 +191,41 @@ void main() {
     await tester.ensureVisible(view);
     controller.jumpTo(0);
     await tester.pumpAndSettle();
-    expect(find.text('00:00').hitTestable(), findsOneWidget);
+    expect(find.text('12:00 AM').hitTestable(), findsOneWidget);
     controller.jumpTo(controller.position.maxScrollExtent);
     await tester.pumpAndSettle();
-    expect(find.text('24:00').hitTestable(), findsOneWidget);
+    expect(find.text('12:00 AM').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'late slots stay reachable and the footer never creates phantom classes',
+    (tester) async {
+      TimeOfDay? chosen;
+      await tester.pumpWidget(
+        calendar(mode: CalendarMode.day, onSlot: (_, time) => chosen = time),
+      );
+      final view = find
+          .descendant(
+            of: find.byType(DayTimeline),
+            matching: find.byType(SingleChildScrollView),
+          )
+          .last;
+      await tester.ensureVisible(view);
+      final controller = tester.widget<SingleChildScrollView>(view).controller!;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final top = tester.getTopLeft(
+        find.byKey(const ValueKey('timeline-grid')),
+      );
+      await tester.tapAt(top + const Offset(100, 23.5 * 72 + 4));
+      await tester.pumpAndSettle();
+      expect(chosen, const TimeOfDay(hour: 23, minute: 30));
+      chosen = null;
+      await tester.tapAt(top + const Offset(100, 24 * 72 + 50));
+      await tester.pumpAndSettle();
+      expect(chosen, isNull);
+    },
+  );
   testWidgets('late time-slot class saves valid contextual times', (
     tester,
   ) async {

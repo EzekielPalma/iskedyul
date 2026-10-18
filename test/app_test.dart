@@ -10,6 +10,11 @@ import 'package:iskedyul/screens/screens.dart';
 import 'package:iskedyul/screens/weekly_calendar.dart';
 
 Future<void> tapText(WidgetTester tester, String text) async {
+  if ((text == 'Add class' || text == 'Add task') &&
+      find.text(text).evaluate().isEmpty) {
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+  }
   final target = find.text(text).last;
   await tester.ensureVisible(target);
   await tester.tap(target);
