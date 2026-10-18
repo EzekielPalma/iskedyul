@@ -38,15 +38,13 @@ jobs:
       - name: Test local launcher
         working-directory: tool/launcher
         run: go test ./...
-      - name: Package laptop downloads
+      - name: Package Windows download
         run: python3 tool/package_web.py
       - uses: actions/upload-artifact@v4
         with:
           name: iskedyul-laptop-downloads
           path: build/downloads/*.zip
           if-no-files-found: error
-      - name: Build GitHub Pages site
-        run: flutter build web --release --base-href /iskedyul/ --no-web-resources-cdn
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
@@ -85,6 +83,6 @@ jobs:
           BUILD_SHA: ${{ github.sha }}
         run: |
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "$BUILD_SHA" --latest --title "iSkedyul · Web build ${{ github.run_number }}" --notes "Download the ZIP for your laptop, extract it, and open Start-iSkedyul. No Flutter or emulator required. See README.md for instructions."
+            gh release create "$RELEASE_TAG" --target "$BUILD_SHA" --latest --title "iSkedyul · Web build ${{ github.run_number }}" --notes "Download iskedyul-windows-x64.zip, extract it, and open Start-iSkedyul.exe. No Flutter or emulator required. See README.md for instructions."
           fi
           gh release upload "$RELEASE_TAG" downloads/*.zip --clobber

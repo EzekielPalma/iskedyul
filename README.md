@@ -24,40 +24,33 @@ The course rubric guides the concept, responsive screens, navigation, validation
 
 ## Use the app without Flutter
 
-Once deployed, open **https://EzekielPalma.github.io/iskedyul/** in a modern browser. Deployment requires the GitHub setup below; adding this workflow does not by itself publish the site.
+Once deployed, open **https://app-iskedyul.github.io/** in a modern browser. Deployment requires the GitHub setup below; adding this workflow does not by itself publish the site.
 
 ### GitHub Pages setup (repository owner)
 
-1. Push this source code to the `main` branch of `EzekielPalma/iskedyul`.
+1. Push this source code to the `main` branch of `app-iskedyul/app-iskedyul.github.io`.
 2. In GitHub **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**.
 3. In **Actions**, enable workflows if GitHub asks. Check that the **Flutter Web** workflow finishes successfully. If the `github-pages` environment requires approval, approve its deployment.
 4. Open the deployment URL from the completed action or Settings → Pages.
 
-The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and produces two distinct builds. Pull requests run verification and upload the local artifact but do not deploy. Pushes to `main` also deploy Pages, using the required **`/iskedyul/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
+The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app and packages the Windows download. Pull requests run verification and upload the local artifact but do not deploy. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
 
 ### Download and run on another laptop
 
-1. Open **[the latest GitHub release](https://github.com/EzekielPalma/iskedyul/releases/latest)**.
-2. Under **Assets**, download the ZIP for your laptop:
-
-   | Laptop | Download |
-   | --- | --- |
-   | Windows (64-bit Intel/AMD) | `iskedyul-windows-x64.zip` |
-   | Linux (64-bit Intel/AMD) | `iskedyul-linux-x64.zip` |
-   | Mac with Apple silicon (M1 or newer) | `iskedyul-macos-apple-silicon.zip` |
-   | Mac with Intel processor | `iskedyul-macos-intel.zip` |
+1. Open **[the latest GitHub release](https://github.com/app-iskedyul/app-iskedyul.github.io/releases/latest)**.
+2. Under **Assets**, download **`iskedyul-windows-x64.zip`** for a 64-bit Windows laptop.
 
 3. Extract the **entire ZIP** to a folder. Keep `Start-iSkedyul` and the `web` folder together.
-4. Open **`Start-iSkedyul.exe`** on Windows, or **`Start-iSkedyul`** on Linux/macOS. It opens the app in your default browser.
+4. Open **`Start-iSkedyul.exe`**. It opens the app in your default browser.
 5. Keep the launcher window open while using the app. Close it or press Ctrl+C when finished.
 
-If the browser does not open automatically, visit **http://127.0.0.1:8080**. On Linux/macOS, you can open a terminal in the extracted folder and run `./Start-iSkedyul`. Your operating system may ask you to approve the unsigned launcher; only approve downloads you trust. On macOS, use the system's Open/Privacy & Security controls if it blocks the downloaded executable.
+If the browser does not open automatically, visit **http://127.0.0.1:8080**. Windows may ask you to approve the unsigned launcher; only approve downloads you trust.
 
 **No Flutter, emulator, Python, Node, or Go installation is needed on the laptop.** The small launcher serves the bundled app locally and only listens on this laptop. It is a compiled web app running in a browser, not an Android APK. Save the folder and reuse the same browser/address to keep the same planner. A different laptop starts its own local planner; this does not transfer your saved data.
 
-The release also includes `iskedyul-web-server.zip` for people who already have a static HTTP server. Do not choose GitHub's auto-generated **Source code** ZIPs to run the app.
+Do not choose GitHub's auto-generated **Source code** ZIPs to run the app.
 
-If a release has not appeared yet, check the **Flutter Web** workflow's **release** job. The same ready-to-run ZIPs are also under the `iskedyul-laptop-downloads` Actions artifact. Each successful push to `main` builds and publishes the download packages automatically.
+If a release has not appeared yet, check the **Flutter Web** workflow's **release** job. The same ready-to-run ZIPs are also under the `iskedyul-laptop-downloads` Actions artifact. Each successful push to `main` builds and publishes the Windows download automatically.
 
 ### Optional: bare web build for an existing server
 
@@ -75,7 +68,7 @@ python3 -m http.server 8080 --bind 127.0.0.1
 
 Then open `http://localhost:8080` in your browser. Stop the server with Ctrl+C. An existing editor's static HTTP server also works if it serves this folder at `/`. A static server is required; Python is just one option.
 
-**GitHub “Code → Download ZIP” downloads source, not the ready-to-run app.** Use the release ZIP for your laptop, or the `iskedyul-web-local` Actions artifact for the bare compiled web files. The Pages artifact is a separate build for `/iskedyul/`; it is not the root-serving download.
+**GitHub “Code → Download ZIP” downloads source, not the ready-to-run app.** Use the release ZIP for your laptop, or the `iskedyul-web-local` Actions artifact for the bare compiled web files. The same root-serving build powers Pages; the Windows release ZIP additionally contains the launcher.
 
 All builds use `--no-web-resources-cdn` so the Flutter web runtime is bundled. Fonts and icons are also local; no Google Fonts requests are needed. This is not an offline-installable/PWA guarantee.
 
@@ -101,8 +94,7 @@ Build commands (each replaces `build/web`):
 ```sh
 # Root-serving downloadable build
 flutter build web --release --base-href / --no-web-resources-cdn
-# GitHub project Pages build
-flutter build web --release --base-href /iskedyul/ --no-web-resources-cdn
+# The organization Pages site uses the same / base path.
 ```
 
 ### Build the local launchers in the cloud
@@ -110,12 +102,12 @@ flutter build web --release --base-href /iskedyul/ --no-web-resources-cdn
 Only the cloud build machine needs Go **1.27.2**. The launcher uses Go's standard library and adds no Flutter dependencies:
 
 ```sh
-# After the root-serving Flutter build (not the /iskedyul/ build):
+# After the root-serving Flutter build:
 go test -C tool/launcher ./...
 python3 tool/package_web.py
 ```
 
-Packages are written to `build/downloads/`. CI cross-compiles Windows/Linux x64 and macOS Intel/Apple silicon launchers, uploads them, and publishes a GitHub release. Linux serving and browser behavior are tested in the cloud; Windows/macOS executables are cross-compiled and should be tried on their target laptops. Normal users download these compiled packages, not this toolchain.
+Packages are written to `build/downloads/`. CI cross-compiles the Windows x64 launcher, uploads the ZIP, and publishes a GitHub release. The static-server handler, web app, and browser behavior are tested in the cloud; the Windows executable should also be tried on a Windows laptop. Normal users download these compiled packages, not this toolchain.
 
 ## Small project structure
 
@@ -134,7 +126,7 @@ There are no third-party runtime dependencies. Forms keep their own draft values
 
 ## Local saving and recovery
 
-- Data survives refresh and browser restarts when browser storage is available. Use the same browser profile and site origin (scheme, hostname, and port). GitHub Pages and a downloaded local build have separate storage; changing local server ports also changes the saved planner.
+- Data survives refresh and browser restarts when browser storage is available. Use the same browser profile and site origin (scheme, hostname, and port). The new organization address, the old personal Pages address, and a downloaded local build have separate storage; changing local server ports also changes the saved planner.
 - A missing storage key seeds the sample data once. A valid empty snapshot stays empty: samples are not reinserted after you delete all schedules.
 - Invalid JSON or an unsupported snapshot starts an empty planner with a visible recovery notice. Valid snapshots containing invalid entries keep valid schedules/tasks and skip malformed rows, duplicate IDs, invalid dates/times, and tasks with missing schedules. Recovery does not overwrite the original snapshot until you make another change.
 - If browser storage is blocked or full, the app remains usable in memory and displays a warning. It does not claim the change was saved; keep the tab open, resolve storage access/space, and make another change to retry saving. Reloading before a successful save loses unsaved changes.
