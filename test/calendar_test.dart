@@ -140,17 +140,17 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Monday lab'), findsOneWidget);
+      expect(find.text('Monday lab'), findsNWidgets(2));
       expect(find.text('Monday deadline'), findsOneWidget);
       await tap(tester, find.byKey(const ValueKey('calendar-day-1')));
-      expect(find.text('Tuesday class'), findsOneWidget);
+      expect(find.text('Tuesday class'), findsNWidgets(2));
       expect(find.text('Monday deadline'), findsNothing);
-      await tap(tester, find.text('Add Schedule'));
+      await tap(tester, find.text('Add class'));
       expect(selectedScheduleDate, DateTime(2026, 12, 29));
-      await tap(tester, find.text('Add Task'));
+      await tap(tester, find.text('Add task'));
       expect(selectedTaskDate, DateTime(2026, 12, 29));
       await tap(tester, find.byTooltip('Next week'));
-      expect(find.text('Tuesday class'), findsOneWidget);
+      expect(find.text('Tuesday class'), findsNWidgets(2));
       expect(find.text('Tuesday · Jan 5'), findsOneWidget);
       await tap(tester, find.byTooltip('Previous week'));
       expect(find.text('Tuesday · Dec 29'), findsOneWidget);
@@ -193,16 +193,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets(
-    'calendar Add Schedule prefills weekday and Add Task prefills due date',
+    'calendar Add class prefills weekday and Add task prefills due date',
     (tester) async {
       addTearDown(() => tester.pumpWidget(const SizedBox()));
       final state = AppState();
       state.saveSchedule(lesson(1, 'Existing class', 1, 9, 10));
       await tester.pumpWidget(ISkedyulApp(state: state));
-      await tap(tester, find.text('Get Started'));
-      await tap(tester, find.text('Week'));
+      await tap(tester, find.text('Get started'));
+      await tap(tester, find.text('Calendar').last);
       await tap(tester, find.byKey(const ValueKey('calendar-day-2')));
-      await tap(tester, find.text('Add Schedule'));
+      await tap(tester, find.text('Add class'));
       final weekday = tester.widget<DropdownButtonFormField<int>>(
         find.byType(DropdownButtonFormField<int>),
       );
@@ -211,7 +211,7 @@ void main() {
         find.byType(TextFormField).first,
         'Wednesday review',
       );
-      await tap(tester, find.text('Save Schedule'));
+      await tap(tester, find.text('Save class'));
       expect(state.schedules.last.weekday, 3);
       // A separate fresh route verifies the task's contextual date.
       final date = DateTime(2027, 1, 6);
@@ -225,7 +225,7 @@ void main() {
       );
       expect(find.text('Due date: 1/6/2027'), findsOneWidget);
       await tester.enterText(find.byType(TextFormField).first, 'Calendar task');
-      await tap(tester, find.text('Save Task'));
+      await tap(tester, find.text('Save task'));
       expect(state.tasks.last.due, date);
       expect(state.tasks.last.scheduleId, 1);
     },

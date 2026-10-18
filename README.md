@@ -6,25 +6,29 @@ A Flutter Web student planner for a second-year student's solo mobile applicatio
 
 ## What you can try
 
-- First visit: Welcome → Get Started. Returning visits open Today.
-- **Today**: Next class (or In progress), Due today, daily counts, and other urgent tasks.
-- **Week**: an interactive weekly calendar with a day selector, previous/next week, and a Today shortcut. Phone/landscape layouts use a daily agenda; wide screens also show a tappable weekly timetable.
-- **Tasks**: all pending tasks, followed by a separate completed section.
+- First visit: Welcome → Get started. Returning visits open Today.
+- **Today**: compact, tappable counts open today’s classes, pending tasks, or completed tasks. A progress bar reflects your actual completed tasks and stays hidden for an empty planner. Next class (or In progress), Due today, and urgent tasks remain below.
+- **Calendar**: Day, Week, and Month views, Mon–Sun labels, previous/next period, a Today shortcut, and a tappable date heading to jump to another date. Day and Week include a scrollable 24-hour timetable.
+- **Tasks**: To do and Done filters with live counts. Completed tasks stay separate; switching filters never deletes anything.
 - Open a schedule to see its times, linked tasks, and one editable plain-text notes field.
 - Create, edit, and delete schedules and tasks, with validation, save confirmations, and destructive-delete confirmation. Deleting a schedule also removes its linked tasks and notes. Cancel leaves everything unchanged.
 - Select a weekday and times; the end must be after the start on the same day.
 - Link every task to exactly one schedule, choose a due date and High/Medium/Low priority, and toggle completion.
-- Pending overdue tasks appear first, then priority, then nearest due date; completed tasks appear in a separate section on the dashboard and schedule details. All pending tasks remain accessible in the Tasks tab. “Urgent” includes overdue, due today, and High-priority pending tasks.
+- Pending overdue tasks appear first, then priority, then nearest due date; completed tasks appear in the Done filter and a separate section in class details. All pending tasks remain accessible in the Tasks tab. “Urgent” includes overdue, due today, and High-priority pending tasks.
 
-New planners start empty. Add your own classes and tasks; your saved data is restored on return. To remove previously saved sample entries, open Week → Clear planner and confirm. This removes all saved classes, tasks and notes; Cancel keeps them. Weekly entries are stored as weekdays, not individual dated events. The UI uses grayscale, text status labels, built-in icons and bundled DejaVu fonts (license in `assets/fonts/LICENSE.txt`). Layouts scroll in portrait, landscape and desktop sizes.
+New planners start empty. Add your own classes and tasks; your saved data is restored on return. To remove previously saved sample entries, open Calendar → Clear planner and confirm. This removes all saved classes, tasks and notes; Cancel keeps them. Weekly entries are stored as weekdays, not individual dated events. The UI uses grayscale, text status labels, built-in icons and bundled DejaVu fonts (license in `assets/fonts/LICENSE.txt`). Layouts scroll in portrait, landscape and desktop sizes.
 
-## Weekly calendar flow
+## Calendar and dashboard flow
 
-1. Open **Week**. Select a day, or use the arrows to browse weeks. **Today** returns to the current date.
-2. **Add Schedule** prefills that day's weekday. The class repeats on that weekday every week; browsing weeks does not create duplicate records.
-3. **Add Task** prefills the selected date. Choose its linked class; the deadline appears on its actual due date, not every week.
-4. Tap a class to open its tasks and notes. On wide screens, classes in the timetable are tappable too. Rows group classes by starting hour and show their full start/end times.
-5. Pending deadlines and completed tasks remain separate. Checking off a task updates the calendar and Today counts immediately.
+1. On **Today**, tap **Classes today** to open the daily calendar, **To do** for pending tasks, or **Done** for completed tasks. Counts are interactive shortcuts with standard Material icons and visible chevrons. Empty planners show zeros without fake progress or sample entries.
+2. Open **Calendar** and select **Day**, **Week**, or **Month**. Arrows move by the selected period. Tap the date heading to choose any date from 2000–2100; **Today** returns to the current date.
+3. Week shows **Mon, Tue, Wed, Thu, Fri, Sat, Sun**. On phones, choose a weekday to see its full-width daily timetable; on wide screens, see all seven days side by side. Month shows weekly class occurrences and dated pending deadlines; tap any date to open its day.
+4. Scroll the timetable through **00:00–24:00**, with half-hour guides. Class positions and heights follow their actual start times and durations. Simultaneous cards use separate lanes so they remain selectable; this does not perform conflict detection. **Now** returns to the current hour for a view containing today; other dates start at 08:00.
+5. Tap an empty time slot to open **Add class** with its weekday and half-hour start prefilled. **Add class** also works without selecting a slot. Classes repeat on their weekday every week; browsing never creates duplicate records. The suggested end is one hour later, capped at 23:59, and remains editable.
+6. **Add task** prefills the selected date. Choose its linked class; the deadline appears on its actual due date, not every week. This button becomes available after the first class is added.
+7. Tap a class in the timetable or agenda to open its linked tasks and notes. Pending deadlines and completed tasks remain separate. Checking a task updates counts and progress immediately, and saves it locally.
+
+The interface uses concise sentence-case actions, bordered cards, grayscale selection states, and standard Material buttons with at least 48-pixel control heights. Weekday/date cells and timetable cards use accessible descriptive labels. Very short timetable events stay compact; the agenda provides full-size class cards below.
 
 Today highlights the nearest class, including a class currently in progress. Ended classes move to their next weekly occurrence. This view refreshes every minute and when the app returns from the background. Due today contains pending tasks only; other urgent tasks remain below. Dates and times follow the device's local time.
 
@@ -126,7 +130,8 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `lib/main.dart`: theme and app entry point.
 - `lib/data/models.dart`: schedules, tasks, and ordering helpers.
 - `lib/data/calendar.dart`: calendar dates and next-class occurrences.
-- `lib/screens/weekly_calendar.dart`: responsive calendar, timetable, and selected-day agenda.
+- `lib/screens/weekly_calendar.dart`: day/week/month navigation, date selection, and selected-day agenda.
+- `lib/screens/day_timeline.dart`: scrollable 24-hour timetable and duration-sized class cards.
 - `test/fixtures/`: sample data used only by tests; no samples are inserted in the app.
 - `lib/data/app_state.dart`: state and save/delete operations using Flutter's ChangeNotifier and InheritedNotifier.
 - `lib/data/snapshot.dart`: versioned JSON serialization, validation, and recovery.
@@ -134,6 +139,7 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `lib/screens/screens.dart`: the six screens and their small shared widgets.
 - `test/app_test.dart`: ordering, navigation, forms, delete confirmations, separate completed sections, and responsive layouts.
 - `test/calendar_test.dart`: date/year boundaries, weekly repetition, next-class transitions, deadlines, contextual forms, and timetable navigation.
+- `test/modern_planner_test.dart`: dashboard shortcuts, task filters, month navigation/date picker, 24-hour scrolling, time-slot forms, duration/overlap layout, supported dates, and responsive calendar modes.
 - `tool/launcher/` and `tool/package_web.py`: compiled local server and download packaging (cloud build tools only).
 - `test/persistence_test.dart`: reload simulation, saved edits/completion/notes, cascading deletion, intentionally empty data, malformed saved data, and storage failure/retry.
 
@@ -142,7 +148,7 @@ There are no third-party runtime dependencies. Forms keep their own draft values
 ## Local saving and recovery
 
 - Data survives refresh and browser restarts when browser storage is available. Use the same browser profile and site origin (scheme, hostname, and port). The new organization address, the old personal Pages address, and a downloaded local build have separate storage; changing local server ports also changes the saved planner.
-- A missing storage key creates an empty planner. A valid empty snapshot stays empty. Existing saved entries are preserved during updates, including older sample entries; use Week → Clear planner to intentionally remove them.
+- A missing storage key creates an empty planner. A valid empty snapshot stays empty. Existing saved entries are preserved during updates, including older sample entries; use Calendar → Clear planner to intentionally remove them.
 - Invalid JSON or an unsupported snapshot starts an empty planner with a visible recovery notice. Valid snapshots containing invalid entries keep valid schedules/tasks and skip malformed rows, duplicate IDs, invalid dates/times, and tasks with missing schedules. Recovery does not overwrite the original snapshot until you make another change.
 - If browser storage is blocked or full, the app remains usable in memory and displays a warning. It does not claim the change was saved; keep the tab open, resolve storage access/space, and make another change to retry saving. Reloading before a successful save loses unsaved changes.
 - Notes are one plain-text field per schedule, limited to 2,000 characters. Titles and subjects are required; schedules must end after they start on the same day. Tasks require one existing linked schedule. Past due dates are allowed and become overdue when pending.

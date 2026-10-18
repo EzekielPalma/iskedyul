@@ -63,3 +63,85 @@ ClassOccurrence? nextClass(Iterable<Schedule> schedules, DateTime now) {
   }).toList()..sort((a, b) => a.start.compareTo(b.start));
   return occurrences.isEmpty ? null : occurrences.first;
 }
+
+enum CalendarMode { day, week, month }
+
+const fullMonthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+String time24(int minute) =>
+    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+DateTime shiftMonth(DateTime date, int offset) {
+  final first = DateTime(date.year, date.month + offset);
+  final lastDay = DateTime(first.year, first.month + 1, 0).day;
+  return DateTime(
+    first.year,
+    first.month,
+    date.day > lastDay ? lastDay : date.day,
+  );
+}
+
+List<DateTime> monthDates(DateTime date) {
+  final first = DateTime(date.year, date.month);
+  final start = mondayOf(first);
+  final length = DateTime(date.year, date.month + 1, 0).day;
+  final cells = ((first.weekday - 1 + length + 6) ~/ 7) * 7;
+  return List.generate(cells, (i) => shiftDay(start, i));
+}
+
+bool supportedDate(DateTime date) => date.year >= 2000 && date.year <= 2100;
+
+class EventLane {
+  const EventLane(this.schedule, this.lane, this.lanes);
+  final Schedule schedule;
+  final int lane;
+  final int lanes;
+}
+
+// Layout only: simultaneous cards get separate lanes so each stays selectable.
+List<EventLane> eventLanes(List<Schedule> schedules) {
+  final sorted = schedules.toList()
+    ..sort((a, b) => minutes(a.start).compareTo(minutes(b.start)));
+  final result = <EventLane>[];
+  var group = <Schedule>[];
+  var groupEnd = -1;
+  void finishGroup() {
+    final ends = <int>[];
+    final assignments = <int>[];
+    for (final schedule in group) {
+      var lane = ends.indexWhere((end) => end <= minutes(schedule.start));
+      if (lane < 0) {
+        lane = ends.length;
+        ends.add(0);
+      }
+      ends[lane] = minutes(schedule.end);
+      assignments.add(lane);
+    }
+    for (var i = 0; i < group.length; i++) {
+      result.add(EventLane(group[i], assignments[i], ends.length));
+    }
+  }
+
+  for (final schedule in sorted) {
+    if (group.isNotEmpty && minutes(schedule.start) >= groupEnd) {
+      finishGroup();
+      group = [];
+      groupEnd = -1;
+    }
+    group.add(schedule);
+    if (minutes(schedule.end) > groupEnd) groupEnd = minutes(schedule.end);
+  }
+  if (group.isNotEmpty) finishGroup();
+  return result;
+}

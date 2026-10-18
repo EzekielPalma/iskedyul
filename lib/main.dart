@@ -21,6 +21,18 @@ class ISkedyulApp extends StatelessWidget {
         colorScheme: const ColorScheme.light(
           primary: Colors.black,
           onPrimary: Colors.white,
+          primaryContainer: Color(0xFFE5E5E5),
+          onPrimaryContainer: Colors.black,
+          secondaryContainer: Color(0xFFE5E5E5),
+          onSecondaryContainer: Colors.black,
+          tertiary: Color(0xFF444444),
+          onTertiary: Colors.white,
+          tertiaryContainer: Color(0xFFE5E5E5),
+          onTertiaryContainer: Colors.black,
+          errorContainer: Color(0xFFE5E5E5),
+          onErrorContainer: Colors.black,
+          surfaceTint: Colors.transparent,
+          outlineVariant: Color(0xFFDDDDDD),
           secondary: Color(0xFF444444),
           onSecondary: Colors.white,
           surface: Color(0xFFFAFAFA),
@@ -62,7 +74,7 @@ class ISkedyulApp extends StatelessWidget {
             ),
             textStyle: const TextStyle(
               fontFamily: 'StudentSans',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -77,19 +89,23 @@ class ISkedyulApp extends StatelessWidget {
             ),
             textStyle: const TextStyle(
               fontFamily: 'StudentSans',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
+            minimumSize: const Size(48, 48),
             textStyle: const TextStyle(
               fontFamily: 'StudentSans',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,

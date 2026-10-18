@@ -20,7 +20,7 @@ Future<AppState> start(WidgetTester tester) async {
   addTearDown(() => tester.pumpWidget(const SizedBox()));
   final state = seededState();
   await tester.pumpWidget(ISkedyulApp(state: state));
-  await tapText(tester, 'Get Started');
+  await tapText(tester, 'Get started');
   return state;
 }
 
@@ -31,24 +31,21 @@ void main() {
     addTearDown(() => tester.pumpWidget(const SizedBox()));
     final state = AppState();
     await tester.pumpWidget(ISkedyulApp(state: state));
-    await tapText(tester, 'Get Started');
+    await tapText(tester, 'Get started');
     expect(find.text('No classes today.'), findsOneWidget);
     expect(find.byType(ScheduleCard), findsNothing);
-    await tapText(tester, 'Week');
-    expect(
-      find.text('No classes yet. Add your first schedule.'),
-      findsOneWidget,
-    );
-    await tapText(tester, 'Add Schedule');
+    await tapText(tester, 'Calendar');
+    expect(find.text('No classes yet. Add your first class.'), findsOneWidget);
+    await tapText(tester, 'Add class');
     await tester.enterText(find.byType(TextFormField).first, 'My first class');
-    await tapText(tester, 'Save Schedule');
+    await tapText(tester, 'Save class');
     expect(state.schedules.single.subject, 'My first class');
   });
   testWidgets('clear planner confirms deletion and cancel preserves entries', (
     tester,
   ) async {
     final state = await start(tester);
-    await tapText(tester, 'Week');
+    await tapText(tester, 'Calendar');
     await tapText(tester, 'Clear planner');
     await tapText(tester, 'Cancel');
     expect(state.schedules.length, 3);
@@ -56,10 +53,7 @@ void main() {
     await tapText(tester, 'Delete');
     expect(state.schedules, isEmpty);
     expect(state.tasks, isEmpty);
-    expect(
-      find.text('No classes yet. Add your first schedule.'),
-      findsOneWidget,
-    );
+    expect(find.text('No classes yet. Add your first class.'), findsOneWidget);
   });
   test('tasks sort overdue before priority, pending before completed', () {
     final today = DateTime(2026, 10, 18);
@@ -95,7 +89,7 @@ void main() {
     await tester.pumpWidget(ISkedyulApp(state: restored));
     await tester.pumpAndSettle();
     expect(find.byType(DashboardScreen), findsOneWidget);
-    expect(find.text('Get Started'), findsNothing);
+    expect(find.text('Get started'), findsNothing);
     expect(restored.schedule(1).notes, 'Keep this note.');
   });
   testWidgets('welcome, dashboard, details, notes and completion', (
@@ -106,7 +100,7 @@ void main() {
     await tester.ensureVisible(find.byType(ScheduleCard).first);
     await tester.tap(find.byType(ScheduleCard).first);
     await tester.pumpAndSettle();
-    expect(find.text('Schedule Details'), findsOneWidget);
+    expect(find.text('Class details'), findsOneWidget);
     expect(find.text('Notes'), findsOneWidget);
     final task = state.tasks.first;
     await tester.tap(find.byType(Checkbox).first);
@@ -124,21 +118,21 @@ void main() {
     tester,
   ) async {
     final state = await start(tester);
-    await tapText(tester, 'Add Schedule');
-    await tapText(tester, 'Save Schedule');
+    await tapText(tester, 'Add class');
+    await tapText(tester, 'Save class');
     expect(find.text('Enter a subject or activity.'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).first, 'Study group');
-    await tapText(tester, 'Save Schedule');
-    expect(find.text('Schedule saved.'), findsOneWidget);
+    await tapText(tester, 'Save class');
+    expect(find.text('Class saved.'), findsOneWidget);
     expect(state.schedules.length, 4);
-    await tapText(tester, 'View Schedule');
+    await tapText(tester, 'View class');
     expect(find.text('Study group'), findsOneWidget);
-    await tapText(tester, 'Edit Schedule');
+    await tapText(tester, 'Edit class');
     await tester.enterText(find.byType(TextFormField).first, 'Solo study');
-    await tapText(tester, 'Save Schedule');
+    await tapText(tester, 'Save class');
     expect(state.schedules.last.subject, 'Solo study');
     expect(state.schedules.length, 4);
-    await tapText(tester, 'Back to Today');
+    await tapText(tester, 'Back to today');
     expect(find.byType(DashboardScreen), findsOneWidget);
   });
   testWidgets('schedule rejects end before start', (tester) async {
@@ -160,18 +154,18 @@ void main() {
         ),
       ),
     );
-    await tapText(tester, 'Save Schedule');
+    await tapText(tester, 'Save class');
     expect(find.text('End time must follow start time.'), findsOneWidget);
-    expect(find.text('Schedule saved.'), findsNothing);
+    expect(find.text('Class saved.'), findsNothing);
   });
   testWidgets('task validation, link, create, edit and completion retained', (
     tester,
   ) async {
     final state = await start(tester);
-    await tapText(tester, 'Add Task');
-    await tapText(tester, 'Save Task');
+    await tapText(tester, 'Add task');
+    await tapText(tester, 'Save task');
     expect(find.text('Enter a task title.'), findsOneWidget);
-    expect(find.text('Choose a linked schedule.'), findsOneWidget);
+    expect(find.text('Choose a linked class.'), findsOneWidget);
     await tester.enterText(
       find.byType(TextFormField).first,
       'Read chapter five',
@@ -182,22 +176,22 @@ void main() {
       find.textContaining('Mobile Application Development ·').last,
     );
     await tester.pumpAndSettle();
-    await tapText(tester, 'Save Task');
+    await tapText(tester, 'Save task');
     expect(find.text('Task saved.'), findsOneWidget);
     expect(state.tasks.last.scheduleId, 1);
-    await tapText(tester, 'View Schedule');
+    await tapText(tester, 'View class');
     await tapText(tester, 'Read chapter five');
     await tester.enterText(
       find.byType(TextFormField).first,
       'Read chapter six',
     );
-    await tapText(tester, 'Save Task');
+    await tapText(tester, 'Save task');
     expect(state.tasks.last.title, 'Read chapter six');
     expect(state.tasks.length, 5);
   });
   testWidgets('cancel leaves schedule state unchanged', (tester) async {
     final state = await start(tester);
-    await tapText(tester, 'Add Schedule');
+    await tapText(tester, 'Add class');
     await tester.enterText(find.byType(TextFormField).first, 'Unsaved class');
     await tapText(tester, 'Cancel');
     expect(state.schedules.length, 3);
@@ -210,11 +204,11 @@ void main() {
       await tester.ensureVisible(find.byType(ScheduleCard).first);
       await tester.tap(find.byType(ScheduleCard).first);
       await tester.pumpAndSettle();
-      await tapText(tester, 'Delete Schedule');
+      await tapText(tester, 'Delete class');
       expect(find.textContaining('linked task(s) and notes'), findsOneWidget);
       await tapText(tester, 'Cancel');
       expect(state.schedules.length, 3);
-      await tapText(tester, 'Delete Schedule');
+      await tapText(tester, 'Delete class');
       await tapText(tester, 'Delete');
       expect(state.schedules.length, 2);
       expect(state.tasks.any((t) => t.scheduleId == 1), isFalse);
@@ -226,15 +220,17 @@ void main() {
     (tester) async {
       final state = await start(tester);
       await tapText(tester, 'Tasks');
-      expect(find.text('Completed · 1'), findsOneWidget);
+      expect(find.text('Done · 1'), findsOneWidget);
+      await tapText(tester, 'Done · 1');
       await tapText(tester, 'Read the project brief');
-      await tapText(tester, 'Delete Task');
+      await tapText(tester, 'Delete task');
       await tapText(tester, 'Cancel');
       expect(state.tasks.length, 4);
-      await tapText(tester, 'Delete Task');
+      await tapText(tester, 'Delete task');
       await tapText(tester, 'Delete');
       expect(state.tasks.length, 3);
       await tapText(tester, 'Tasks');
+      await tapText(tester, 'Done · 0');
       expect(find.text('No completed tasks yet.'), findsOneWidget);
     },
   );
@@ -250,25 +246,25 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await start(tester);
       expect(tester.takeException(), isNull);
-      await tapText(tester, 'Week');
+      await tapText(tester, 'Calendar');
       expect(find.byType(WeeklyCalendar), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Tasks');
       expect(find.text('To do · 3'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Today');
-      await tapText(tester, 'Add Task');
+      await tapText(tester, 'Add task');
       expect(tester.takeException(), isNull);
       await tapText(tester, 'Cancel');
-      await tapText(tester, 'Add Schedule');
+      await tapText(tester, 'Add class');
       expect(tester.takeException(), isNull);
       await tester.enterText(
         find.byType(TextFormField).first,
         'Landscape study',
       );
-      await tapText(tester, 'Save Schedule');
+      await tapText(tester, 'Save class');
       expect(tester.takeException(), isNull);
-      await tapText(tester, 'View Schedule');
+      await tapText(tester, 'View class');
       expect(tester.takeException(), isNull);
     });
   }

@@ -195,10 +195,10 @@ class WelcomeScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
+                          weekdays[i].substring(0, 3),
                           style: TextStyle(
                             color: i == 2 ? Colors.black : Colors.white,
-                            fontSize: 11,
+                            fontSize: 9,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -232,7 +232,7 @@ class WelcomeScreen extends StatelessWidget {
       const SizedBox(height: 32),
       FilledButton(
         onPressed: () => dashboard(context),
-        child: const Text('Get Started'),
+        child: const Text('Get started'),
       ),
       const SizedBox(height: 14),
       const Text(
@@ -293,6 +293,9 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
   int tab = 0;
+  bool showDone = false;
+  CalendarMode calendarMode = CalendarMode.week;
+  DateTime? calendarSelection;
   late final Timer clockTimer;
   @override
   void initState() {
@@ -375,7 +378,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           NavigationDestination(
             icon: Icon(Icons.calendar_month),
             selectedIcon: Icon(Icons.calendar_month),
-            label: 'Week',
+            label: 'Calendar',
           ),
           NavigationDestination(
             icon: Icon(Icons.task_alt),
@@ -396,11 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         const SizedBox(height: 10),
         Text(
-          [
-            'Your day, in order.',
-            'Your weekly rhythm.',
-            'A little progress.',
-          ][tab],
+          ['Today', 'Calendar', 'Tasks'][tab],
           style: const TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.w700,
@@ -410,20 +409,79 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         const SizedBox(height: 22),
         if (tab == 0) ...[
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: const Color(0xFF171717),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SummaryCard(
+                  key: const ValueKey('summary-classes'),
+                  count: todays.length,
+                  label: 'Classes today',
+                  icon: Icons.today,
+                  onTap: () {
+                    calendarMode = CalendarMode.day;
+                    calendarSelection = dateOnly(today);
+                    select(1);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SummaryCard(
+                  key: const ValueKey('summary-todo'),
+                  count: pending.length,
+                  label: 'To do',
+                  icon: Icons.checklist,
+                  onTap: () {
+                    showDone = false;
+                    select(2);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SummaryCard(
+                  key: const ValueKey('summary-done'),
+                  count: done.length,
+                  label: 'Done',
+                  icon: Icons.task_alt,
+                  onTap: () {
+                    showDone = true;
+                    select(2);
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (state.tasks.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Row(
               children: [
-                _stat('${todays.length}', 'Classes today'),
-                _stat('${pending.length}', 'To do'),
-                _stat('${done.length}', 'Done'),
+                Expanded(
+                  child: Text(
+                    '${done.length} of ${state.tasks.length} tasks complete',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ),
+                Text(
+                  '${(done.length / state.tasks.length * 100).round()}%',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: done.length / state.tasks.length,
+              minHeight: 4,
+              borderRadius: BorderRadius.circular(4),
+              backgroundColor: const Color(0xFFE3E3E3),
+              color: Colors.black,
+              semanticsLabel: 'Completed tasks',
+            ),
+          ],
           const SizedBox(height: 20),
         ],
         if (tab != 1)
@@ -434,14 +492,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               FilledButton.icon(
                 onPressed: () => open(context, const ScheduleFormScreen()),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Schedule'),
+                label: const Text('Add class'),
               ),
               OutlinedButton.icon(
                 onPressed: state.schedules.isEmpty
                     ? null
                     : () => open(context, const TaskFormScreen()),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Task'),
+                label: const Text('Add task'),
               ),
             ],
           ),
@@ -463,7 +521,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               const Expanded(child: Section('Needs attention')),
               TextButton(
-                onPressed: () => select(2),
+                onPressed: () {
+                  showDone = false;
+                  select(2);
+                },
                 child: const Text('View all'),
               ),
             ],
@@ -472,12 +533,29 @@ class _DashboardScreenState extends State<DashboardScreen>
           ...urgent.take(3).map((t) => TaskCard(task: t)),
           if (urgent.length > 3)
             TextButton(
-              onPressed: () => select(2),
+              onPressed: () {
+                showDone = false;
+                select(2);
+              },
               child: Text('View ${urgent.length - 3} more'),
             ),
         ],
         if (tab == 1) ...[
           WeeklyCalendar(
+            today: today,
+            initialMode: calendarMode,
+            initialDate: calendarSelection,
+            onSelectionChanged: (mode, date) {
+              calendarMode = mode;
+              calendarSelection = date;
+            },
+            onAddTimeSlot: (date, time) => open(
+              context,
+              ScheduleFormScreen(
+                initialWeekday: date.weekday,
+                initialStart: time,
+              ),
+            ),
             schedules: state.schedules,
             tasks: state.sortedTasks(),
             scheduleCard: (s) => ScheduleCard(schedule: s),
@@ -507,36 +585,109 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
         ],
         if (tab == 2) ...[
-          Section('To do · ${pending.length}'),
-          if (pending.isEmpty)
-            const EmptyCard('Nothing to do. Enjoy the breather.'),
-          ...pending.map((t) => TaskCard(task: t)),
-          Section('Completed · ${done.length}'),
-          if (done.isEmpty) const EmptyCard('No completed tasks yet.'),
-          ...done.map((t) => TaskCard(task: t)),
+          const SizedBox(height: 20),
+          SegmentedButton<bool>(
+            key: const ValueKey('task-filter'),
+            segments: [
+              ButtonSegment(
+                value: false,
+                label: Text('To do · ${pending.length}'),
+              ),
+              ButtonSegment(value: true, label: Text('Done · ${done.length}')),
+            ],
+            showSelectedIcon: false,
+            selected: {showDone},
+            style: SegmentedButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              selectedBackgroundColor: Colors.black,
+              selectedForegroundColor: Colors.white,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+            ),
+            onSelectionChanged: (value) =>
+                setState(() => showDone = value.single),
+          ),
+          const SizedBox(height: 16),
+          if (showDone && done.isEmpty)
+            const EmptyCard('No completed tasks yet.'),
+          if (!showDone && pending.isEmpty)
+            const EmptyCard('You’re all caught up.'),
+          ...(showDone ? done : pending).map((t) => TaskCard(task: t)),
         ],
       ],
     );
   }
+}
 
-  Widget _stat(String value, String label) => Expanded(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
+class SummaryCard extends StatelessWidget {
+  const SummaryCard({
+    super.key,
+    required this.count,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+  final int count;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '$count $label. Open $label.',
+    button: true,
+    excludeSemantics: true,
+    onTap: onTap,
+    child: Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 19, color: Colors.black54),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: Colors.black45,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: MediaQuery.textScalerOf(context).scale(11) / 11 * 34,
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 11),
-        ),
-      ],
+      ),
     ),
   );
 }
@@ -771,12 +922,12 @@ class ScheduleDetailsScreen extends StatelessWidget {
     final state = AppScope.of(context);
     if (!state.schedules.any((s) => s.id == id)) {
       return PageFrame(
-        title: 'Schedule unavailable',
+        title: 'Class unavailable',
         children: [
           const Text('This schedule was deleted.'),
           TextButton(
             onPressed: () => dashboard(context),
-            child: const Text('Back to Today'),
+            child: const Text('Back to today'),
           ),
         ],
       );
@@ -784,7 +935,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
     final schedule = state.schedule(id);
     final tasks = state.sortedTasks(scheduleId: id);
     return PageFrame(
-      title: 'Schedule Details',
+      title: 'Class details',
       children: [
         const SizedBox(height: 12),
         Text(
@@ -812,12 +963,12 @@ class ScheduleDetailsScreen extends StatelessWidget {
               onPressed: () =>
                   open(context, ScheduleFormScreen(schedule: schedule)),
               icon: const Icon(Icons.edit),
-              label: const Text('Edit Schedule'),
+              label: const Text('Edit class'),
             ),
             FilledButton.icon(
               onPressed: () => open(context, TaskFormScreen(scheduleId: id)),
               icon: const Icon(Icons.add),
-              label: const Text('Add Task'),
+              label: const Text('Add task'),
             ),
           ],
         ),
@@ -855,7 +1006,7 @@ class ScheduleDetailsScreen extends StatelessWidget {
           onPressed: () async {
             final confirmed = await confirmDelete(
               context,
-              'Delete schedule?',
+              'Delete class?',
               'Delete “${schedule.subject}” and its ${tasks.length} linked task(s) and notes? This can’t be undone.',
             );
             if (!context.mounted || !confirmed) return;
@@ -863,12 +1014,12 @@ class ScheduleDetailsScreen extends StatelessWidget {
             dashboard(context);
           },
           icon: const Icon(Icons.delete),
-          label: const Text('Delete Schedule'),
+          label: const Text('Delete class'),
         ),
         const SizedBox(height: 16),
         OutlinedButton(
           onPressed: () => dashboard(context),
-          child: const Text('Back to Today'),
+          child: const Text('Back to today'),
         ),
       ],
     );
@@ -916,9 +1067,15 @@ class _NotesDialogState extends State<NotesDialog> {
 }
 
 class ScheduleFormScreen extends StatefulWidget {
-  const ScheduleFormScreen({super.key, this.schedule, this.initialWeekday});
+  const ScheduleFormScreen({
+    super.key,
+    this.schedule,
+    this.initialWeekday,
+    this.initialStart,
+  });
   final Schedule? schedule;
   final int? initialWeekday;
+  final TimeOfDay? initialStart;
   @override
   State<ScheduleFormScreen> createState() => _ScheduleFormScreenState();
 }
@@ -933,9 +1090,15 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
       widget.initialWeekday ??
       DateTime.now().weekday;
   late TimeOfDay start =
-      widget.schedule?.start ?? const TimeOfDay(hour: 9, minute: 0);
+      widget.schedule?.start ??
+      widget.initialStart ??
+      const TimeOfDay(hour: 9, minute: 0);
   late TimeOfDay end =
-      widget.schedule?.end ?? const TimeOfDay(hour: 10, minute: 0);
+      widget.schedule?.end ??
+      TimeOfDay(
+        hour: ((minutes(start) + 60).clamp(0, 1439)) ~/ 60,
+        minute: ((minutes(start) + 60).clamp(0, 1439)) % 60,
+      );
   @override
   void dispose() {
     subject.dispose();
@@ -960,7 +1123,7 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
 
   @override
   Widget build(BuildContext context) => PageFrame(
-    title: widget.schedule == null ? 'Add Schedule' : 'Edit Schedule',
+    title: widget.schedule == null ? 'Add class' : 'Edit class',
     children: [
       const Text('Repeats weekly.'),
       const SizedBox(height: 24),
@@ -1034,13 +1197,13 @@ class _ScheduleFormScreenState extends State<ScheduleFormScreen> {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute<void>(
                     builder: (_) => ConfirmationScreen(
-                      message: 'Schedule saved.',
+                      message: 'Class saved.',
                       scheduleId: id,
                     ),
                   ),
                 );
               },
-              child: const Text('Save Schedule'),
+              child: const Text('Save class'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1091,7 +1254,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return PageFrame(
-      title: widget.task == null ? 'Add Task' : 'Edit Task',
+      title: widget.task == null ? 'Add task' : 'Edit task',
       children: [
         const Text('What needs doing?'),
         const SizedBox(height: 24),
@@ -1112,7 +1275,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               DropdownButtonFormField<int>(
                 initialValue: scheduleId,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Linked schedule'),
+                decoration: const InputDecoration(labelText: 'Linked class'),
                 items: state.schedules
                     .map(
                       (s) => DropdownMenuItem(
@@ -1125,8 +1288,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     )
                     .toList(),
                 onChanged: (v) => setState(() => scheduleId = v),
-                validator: (v) =>
-                    v == null ? 'Choose a linked schedule.' : null,
+                validator: (v) => v == null ? 'Choose a linked class.' : null,
               ),
               const SizedBox(height: 20),
               OutlinedButton.icon(
@@ -1179,7 +1341,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     ),
                   );
                 },
-                child: const Text('Save Task'),
+                child: const Text('Save task'),
               ),
               if (widget.task != null)
                 TextButton.icon(
@@ -1194,7 +1356,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     dashboard(context);
                   },
                   icon: const Icon(Icons.delete),
-                  label: const Text('Delete Task'),
+                  label: const Text('Delete task'),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -1237,12 +1399,12 @@ class ConfirmationScreen extends StatelessWidget {
             builder: (_) => ScheduleDetailsScreen(id: scheduleId),
           ),
         ),
-        child: const Text('View Schedule'),
+        child: const Text('View class'),
       ),
       const SizedBox(height: 12),
       OutlinedButton(
         onPressed: () => dashboard(context),
-        child: const Text('Back to Today'),
+        child: const Text('Back to today'),
       ),
       TextButton(
         onPressed: () => Navigator.of(context).pushReplacement(
@@ -1250,7 +1412,7 @@ class ConfirmationScreen extends StatelessWidget {
             builder: (_) => TaskFormScreen(scheduleId: scheduleId),
           ),
         ),
-        child: const Text('Add Task'),
+        child: const Text('Add task'),
       ),
     ],
   );

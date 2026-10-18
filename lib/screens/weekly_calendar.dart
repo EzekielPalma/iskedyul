@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../data/calendar.dart';
 import '../data/models.dart';
+import 'day_timeline.dart';
 
-// This view derives dated occurrences from weekdays; it does not duplicate data.
+// Dated views of weekly classes; browsing never duplicates stored records.
 class WeeklyCalendar extends StatefulWidget {
   const WeeklyCalendar({
     super.key,
@@ -15,6 +16,10 @@ class WeeklyCalendar extends StatefulWidget {
     required this.onAddTask,
     required this.onOpenSchedule,
     this.today,
+    this.initialMode = CalendarMode.week,
+    this.initialDate,
+    this.onSelectionChanged,
+    this.onAddTimeSlot,
   });
   final List<Schedule> schedules;
   final List<StudentTask> tasks;
@@ -24,13 +29,17 @@ class WeeklyCalendar extends StatefulWidget {
   final ValueChanged<DateTime> onAddTask;
   final ValueChanged<Schedule> onOpenSchedule;
   final DateTime? today;
+  final CalendarMode initialMode;
+  final DateTime? initialDate;
+  final void Function(CalendarMode, DateTime)? onSelectionChanged;
+  final void Function(DateTime, TimeOfDay)? onAddTimeSlot;
   @override
   State<WeeklyCalendar> createState() => _WeeklyCalendarState();
 }
 
 class _WeeklyCalendarState extends State<WeeklyCalendar> {
-  late DateTime selected = dateOnly(widget.today ?? DateTime.now());
-  late DateTime week = mondayOf(selected);
+  late DateTime selected = dateOnly(widget.initialDate ?? today);
+  late CalendarMode mode = widget.initialMode;
   DateTime get today => dateOnly(widget.today ?? DateTime.now());
   List<Schedule> classesOn(DateTime day) =>
       widget.schedules.where((s) => s.weekday == day.weekday).toList()
@@ -38,45 +47,92 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
   List<StudentTask> tasksOn(DateTime day) =>
       widget.tasks.where((t) => sameDay(t.due, day)).toList()
         ..sort((a, b) => compareTasks(a, b, today));
-  void changeWeek(int offset) => setState(() {
-    week = shiftDay(week, offset * 7);
-    selected = shiftDay(selected, offset * 7);
-  });
-  void goToday() => setState(() {
-    selected = today;
-    week = mondayOf(today);
-  });
+  void choose(DateTime date, [CalendarMode? newMode]) {
+    if (!supportedDate(date)) return;
+    setState(() {
+      selected = dateOnly(date);
+      mode = newMode ?? mode;
+    });
+    widget.onSelectionChanged?.call(mode, selected);
+  }
+
+  DateTime offset(int amount) => mode == CalendarMode.month
+      ? shiftMonth(selected, amount)
+      : shiftDay(selected, amount * (mode == CalendarMode.week ? 7 : 1));
+
+  Future<void> pickDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: selected,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Go to date',
+    );
+    if (date != null && mounted) choose(date);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final week = mondayOf(selected);
     final days = List.generate(7, (i) => shiftDay(week, i));
     final classes = classesOn(selected);
-    final deadlines = tasksOn(selected);
-    final pending = deadlines.where((t) => !t.completed).toList();
-    final done = deadlines.where((t) => t.completed).toList();
+    final pending = tasksOn(selected).where((t) => !t.completed).toList();
+    final done = tasksOn(selected).where((t) => t.completed).toList();
+    final heading = switch (mode) {
+      CalendarMode.day => '${calendarDate(selected)}, ${selected.year}',
+      CalendarMode.week => calendarWeekRange(week),
+      CalendarMode.month =>
+        '${fullMonthNames[selected.month - 1]} ${selected.year}',
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 22),
+        SegmentedButton<CalendarMode>(
+          segments: const [
+            ButtonSegment(value: CalendarMode.day, label: Text('Day')),
+            ButtonSegment(value: CalendarMode.week, label: Text('Week')),
+            ButtonSegment(value: CalendarMode.month, label: Text('Month')),
+          ],
+          selected: {mode},
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            selectedBackgroundColor: Colors.black,
+            selectedForegroundColor: Colors.white,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          onSelectionChanged: (value) => choose(selected, value.single),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: Text(
-                calendarWeekRange(week),
-                key: const ValueKey('week-range'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  key: const ValueKey('calendar-period'),
+                  onPressed: pickDate,
+                  child: Text(heading, style: const TextStyle(fontSize: 14)),
                 ),
               ),
             ),
             IconButton(
-              tooltip: 'Previous week',
-              onPressed: () => changeWeek(-1),
+              tooltip: 'Previous ${mode.name}',
+              onPressed: supportedDate(offset(-1))
+                  ? () => choose(offset(-1))
+                  : null,
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
-              tooltip: 'Next week',
-              onPressed: () => changeWeek(1),
+              tooltip: 'Next ${mode.name}',
+              onPressed: supportedDate(offset(1))
+                  ? () => choose(offset(1))
+                  : null,
               icon: const Icon(Icons.chevron_right),
             ),
           ],
@@ -84,108 +140,49 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
-            onPressed: goToday,
+            onPressed: () => choose(today),
             icon: const Icon(Icons.today, size: 18),
             label: const Text('Today'),
           ),
         ),
-        Row(
-          children: [
-            for (var i = 0; i < 7; i++)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Semantics(
-                    label:
-                        '${weekdays[i]}, ${calendarDate(days[i])}, ${classesOn(days[i]).length} classes, ${tasksOn(days[i]).length} deadlines',
-                    button: true,
-                    selected: sameDay(selected, days[i]),
-                    excludeSemantics: true,
-                    onTap: () => setState(() => selected = days[i]),
-                    child: InkWell(
-                      key: ValueKey('calendar-day-$i'),
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => setState(() => selected = days[i]),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: sameDay(selected, days[i])
-                              ? Colors.black
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: sameDay(today, days[i])
-                                ? Colors.black
-                                : const Color(0xFFE0E0E0),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              weekdays[i].substring(0, 1),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: sameDay(selected, days[i])
-                                    ? Colors.white70
-                                    : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${days[i].day}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: sameDay(selected, days[i])
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Icon(
-                              classesOn(days[i]).isNotEmpty ||
-                                      tasksOn(days[i]).isNotEmpty
-                                  ? Icons.circle
-                                  : Icons.remove,
-                              size: 5,
-                              color: sameDay(selected, days[i])
-                                  ? Colors.white
-                                  : Colors.black54,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
         Wrap(
           spacing: 10,
           runSpacing: 10,
           children: [
             FilledButton.icon(
               onPressed: () => widget.onAddSchedule(selected),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Schedule'),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add class'),
             ),
             OutlinedButton.icon(
               onPressed: widget.schedules.isEmpty
                   ? null
                   : () => widget.onAddTask(selected),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Task'),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add task'),
             ),
           ],
         ),
-        LayoutBuilder(
-          builder: (context, constraints) =>
-              constraints.maxWidth >= 860 && widget.schedules.isNotEmpty
-              ? _timetable(days)
-              : const SizedBox.shrink(),
-        ),
+        const SizedBox(height: 16),
+        if (mode == CalendarMode.week) _weekStrip(days),
+        if (mode == CalendarMode.month) _monthGrid(),
+        if (mode != CalendarMode.month) ...[
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) => DayTimeline(
+              key: const ValueKey('weekly-timetable'),
+              days: mode == CalendarMode.week && constraints.maxWidth >= 860
+                  ? days
+                  : [selected],
+              schedules: widget.schedules,
+              now: widget.today ?? DateTime.now(),
+              onOpen: widget.onOpenSchedule,
+              onCreate: (date, time) => widget.onAddTimeSlot != null
+                  ? widget.onAddTimeSlot!(date, time)
+                  : widget.onAddSchedule(date),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         Text(
           '${weekdays[selected.weekday - 1]} · ${calendarDate(selected)}',
@@ -195,7 +192,7 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
         const SizedBox(height: 14),
         if (widget.schedules.isEmpty)
           const _CalendarEmpty(
-            'No classes yet. Add your first schedule.',
+            'No classes yet. Add your first class.',
             Icons.calendar_today,
           )
         else if (classes.isEmpty)
@@ -225,148 +222,261 @@ class _WeeklyCalendarState extends State<WeeklyCalendar> {
     );
   }
 
-  Widget _timetable(List<DateTime> days) {
-    final hours = widget.schedules.map((s) => s.start.hour).toSet().toList()
-      ..sort();
-    return Padding(
-      padding: const EdgeInsets.only(top: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Weekly timetable',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 12),
-          Table(
-            key: const ValueKey('weekly-timetable'),
-            columnWidths: const {0: FixedColumnWidth(66)},
-            defaultVerticalAlignment: TableCellVerticalAlignment.top,
-            border: TableBorder.all(
-              color: const Color(0xFFDDDDDD),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            children: [
-              TableRow(
-                decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text('Start', style: TextStyle(fontSize: 11)),
+  Widget _weekStrip(List<DateTime> days) => Row(
+    children: [
+      for (var i = 0; i < 7; i++)
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Semantics(
+              label: dayLabel(days[i]),
+              button: true,
+              selected: sameDay(selected, days[i]),
+              excludeSemantics: true,
+              onTap: supportedDate(days[i]) ? () => choose(days[i]) : null,
+              child: InkWell(
+                key: ValueKey('calendar-day-$i'),
+                borderRadius: BorderRadius.circular(12),
+                onTap: supportedDate(days[i]) ? () => choose(days[i]) : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: sameDay(selected, days[i])
+                        ? Colors.black
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: sameDay(today, days[i])
+                          ? Colors.black
+                          : const Color(0xFFE0E0E0),
+                    ),
                   ),
-                  for (final day in days)
-                    InkWell(
-                      onTap: () => setState(() => selected = day),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          '${weekdays[day.weekday - 1].substring(0, 3)} ${day.day}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
+                  child: Column(
+                    children: [
+                      Text(
+                        weekdays[i].substring(0, 3),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: sameDay(selected, days[i])
+                              ? Colors.white70
+                              : Colors.black54,
                         ),
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 8),
+                      Text(
+                        '${days[i].day}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: sameDay(selected, days[i])
+                              ? Colors.white
+                              : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Icon(
+                        classesOn(days[i]).isNotEmpty ||
+                                tasksOn(days[i]).isNotEmpty
+                            ? Icons.circle
+                            : Icons.remove,
+                        size: 5,
+                        color: sameDay(selected, days[i])
+                            ? Colors.white
+                            : Colors.black54,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              for (final hour in hours)
-                TableRow(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Text(
-                        clock(TimeOfDay(hour: hour, minute: 0)),
-                        style: const TextStyle(fontSize: 10),
+            ),
+          ),
+        ),
+    ],
+  );
+
+  String dayLabel(DateTime day) =>
+      '${weekdays[day.weekday - 1]}, ${calendarDate(day)}, ${day.year}, ${classesOn(day).length} classes, ${tasksOn(day).where((t) => !t.completed).length} deadlines';
+
+  Widget _monthGrid() => LayoutBuilder(
+    builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 700;
+      return Column(
+        children: [
+          Row(
+            children: [
+              for (final weekday in weekdays)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      weekday.substring(0, 3),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
                       ),
                     ),
-                    for (final day in days)
-                      Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final schedule in classesOn(
-                              day,
-                            ).where((s) => s.start.hour == hour))
-                              Card(
-                                child: InkWell(
-                                  onTap: () => widget.onOpenSchedule(schedule),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                  ),
+                ),
+            ],
+          ),
+          GridView.count(
+            key: const ValueKey('month-grid'),
+            crossAxisCount: 7,
+            mainAxisSpacing: 3,
+            crossAxisSpacing: 3,
+            childAspectRatio:
+                (constraints.maxWidth / 7 - 3) /
+                ((wide ? 106 : 72) *
+                    MediaQuery.textScalerOf(context).scale(13) /
+                    13),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (final day in monthDates(selected))
+                Builder(
+                  builder: (context) {
+                    final active = sameDay(day, selected);
+                    final classes = classesOn(day);
+                    final deadlines = tasksOn(day)
+                        .where((t) => !t.completed)
+                        .length;
+                    final foreground = active
+                        ? Colors.white
+                        : day.month == selected.month
+                        ? Colors.black
+                        : Colors.black38;
+                    return Semantics(
+                      label: dayLabel(day),
+                      button: true,
+                      selected: active,
+                      excludeSemantics: true,
+                      onTap: supportedDate(day)
+                          ? () => choose(day, CalendarMode.day)
+                          : null,
+                      child: Material(
+                        color: active ? Colors.black : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: sameDay(day, today)
+                                ? Colors.black
+                                : const Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          key: ValueKey(
+                            'month-day-${day.year}-${day.month}-${day.day}',
+                          ),
+                          onTap: supportedDate(day)
+                              ? () => choose(day, CalendarMode.day)
+                              : null,
+                          child: Padding(
+                            padding: EdgeInsets.all(wide ? 10 : 4),
+                            child: Column(
+                              crossAxisAlignment: wide
+                                  ? CrossAxisAlignment.start
+                                  : CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${day.day}',
+                                  style: TextStyle(
+                                    color: foreground,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (classes.isNotEmpty)
+                                  if (wide)
+                                    Text(
+                                      classes.first.subject,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: foreground,
+                                      ),
+                                    )
+                                  else
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Text(
-                                          schedule.subject,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 10,
+                                          color: foreground,
                                         ),
-                                        const SizedBox(height: 7),
+                                        const SizedBox(width: 3),
                                         Text(
-                                          '${clock(schedule.start)}\n${clock(schedule.end)}',
-                                          style: const TextStyle(
+                                          '${classes.length}',
+                                          style: TextStyle(
                                             fontSize: 10,
-                                            color: Colors.black54,
+                                            color: foreground,
                                           ),
                                         ),
                                       ],
                                     ),
+                                if (deadlines > 0)
+                                  Text(
+                                    '$deadlines due',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: foreground,
+                                    ),
                                   ),
-                                ),
-                              ),
-                            if (!classesOn(day)
-                                .any((s) => s.start.hour == hour))
-                              const SizedBox(height: 46),
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                  ],
+                    );
+                  },
                 ),
-              TableRow(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: Text('Due', style: TextStyle(fontSize: 10)),
-                  ),
-                  for (final day in days)
-                    TextButton(
-                      onPressed: () => setState(() => selected = day),
-                      child: Text(
-                        '${tasksOn(day).where((t) => !t.completed).length} tasks',
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ),
-                ],
-              ),
             ],
           ),
+          const SizedBox(height: 10),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Weekly classes · Dated deadlines',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
         ],
-      ),
-    );
-  }
+      );
+    },
+  );
 }
 
 class _CalendarEmpty extends StatelessWidget {
-  const _CalendarEmpty(this.text, this.icon);
-  final String text;
+  const _CalendarEmpty(this.message, this.icon);
+  final String message;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.black54),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: const TextStyle(color: Colors.black54)),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE0E0E0)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.black54),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(color: Colors.black54, fontSize: 13),
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }
