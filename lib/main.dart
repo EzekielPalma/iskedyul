@@ -6,7 +6,11 @@ import 'app_router.dart';
 
 import 'package:go_router/go_router.dart';
 
-void main() => runApp(ISkedyulApp(state: AppState(storage: createStorage())));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final storage = await createStorage();
+  runApp(ISkedyulApp(state: AppState(storage: storage)));
+}
 
 class ISkedyulApp extends StatefulWidget {
   const ISkedyulApp({super.key, required this.state});

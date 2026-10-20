@@ -1,6 +1,6 @@
-# iSkedyul — Phase 2
+# iSkedyul
 
-A Flutter Web student planner for a second-year student's solo mobile application project. Phase 2 adds browser-local persistence to the approved Phase 1 UI. There is no backend, login, external API, or paid service.
+A Flutter student planner for a second-year student's solo mobile application project. Available on the web and as an installable Android APK, with local saving on each platform. There is no backend, login, external API, or paid service.
 
 ## What you can try
 
@@ -32,17 +32,17 @@ The interface uses concise sentence-case actions, bordered cards, grayscale sele
 
 Today highlights the nearest class, including a class currently in progress. Ended classes move to their next weekly occurrence. This view refreshes every minute and when the app returns from the background. Due today contains pending tasks only; other urgent tasks remain below. Dates and times follow the device's local time.
 
-The calendar is part of the app and uses only saved browser data—there is no external calendar integration. Icons use Flutter's standard Material set, with text labels for priority and status. New planners still start empty.
+The calendar is part of the app and uses only saved local data—there is no external calendar integration. Icons use Flutter's standard Material set, with text labels for priority and status. New planners still start empty.
 
 ## Purpose and concept
 
-iSkedyul helps students keep weekly classes, linked deadlines, and class notes in one place. Students add their classes, attach tasks with due dates and priorities, check the calendar, and mark work complete. Notes stay with the relevant class, and the planner saves in the browser.
+iSkedyul helps students keep weekly classes, linked deadlines, and class notes in one place. Students add their classes, attach tasks with due dates and priorities, check the calendar, and mark work complete. Notes stay with the relevant class, and the planner saves locally on the current browser or Android device.
 
 We started with a common student problem: schedules, assignments, and notes are often scattered across different places. We chose a focused planner that a second-year student can build and explain independently. Its screens, navigation, validated forms, and local saving follow the course guide. Cloud builds and GitHub delivery let students use it without installing development tools.
 
 ## Project approach
 
-The course rubric guides the concept, responsive screens, navigation, validation and local saving. The current target is Flutter Web, usable in a phone or laptop browser. Development, testing, and compilation happen in the cloud. GitHub hosts the live app and distributes ready-to-run downloads; the user's laptop does not need Flutter, Android Studio, an emulator, or Go.
+The course rubric guides the concept, responsive screens, navigation, validation and local saving. Targets are Flutter Web, usable in a phone or laptop browser, and native Flutter Android. The Windows download packages the web version with a local launcher. Development, testing, and compilation happen in the cloud. GitHub hosts the live app and distributes ready-to-run downloads; the user's laptop does not need Flutter, Android Studio, an emulator, or Go.
 
 ## Use the app without Flutter
 
@@ -55,7 +55,7 @@ Once deployed, open **https://app-iskedyul.github.io/** in a modern browser. Dep
 3. In **Actions**, enable workflows if GitHub asks. Check that the **Flutter Web** workflow finishes successfully. If the `github-pages` environment requires approval, approve its deployment.
 4. Open the deployment URL from the completed action or Settings → Pages.
 
-The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app. The same verified web build is packaged with a Windows x64 launcher. The workflow runs the packaged executable on a Windows runner and checks its bundled files before publishing a release. Pull requests run verification and upload artifacts but do not deploy or publish releases. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
+The workflow pins **Flutter stable 3.47.7**, matching `.flutter-version` and the cloud SDK. It formats-checks, analyzes, tests, and builds the root-serving web app. The same verified web build is packaged with a Windows x64 launcher. The workflow runs the packaged executable on a Windows runner and checks its bundled files before publishing a release. A separate Android job compiles a development-signed release APK using Java 17 and the Android SDK, checks the APK signature, and uploads `iskedyul-android-apk`. No Android device/emulator tests are run. Pull requests run verification and upload artifacts but do not deploy or publish releases. Pushes to `main` also deploy Pages, using the required **`/` base path**. If the repository is renamed or uses a custom domain, adjust that base path. Pages deployment uses GitHub's `GITHUB_TOKEN` permissions; no personal token is needed.
 
 ### Download and run on another laptop
 
@@ -72,7 +72,34 @@ If the browser does not open automatically, visit **http://127.0.0.1:8080**. Win
 
 Do not choose GitHub's auto-generated **Source code** ZIPs to run the app.
 
-Successful pushes to `main` update Pages and publish a Windows ZIP from the same source commit. The release waits for the Windows executable check; a failed check leaves the previous release available. `BUILD-INFO.txt` in the ZIP identifies its source commit. Windows builds target 64-bit x64 laptops only. Internet is needed to download the ZIP; the extracted app runs locally with its runtime, fonts, and icons bundled.
+Successful pushes to `main` update Pages and publish a Windows ZIP and Android APK from the same source commit. The release waits for the Windows executable check and Android build/signature verification; a failure leaves the previous release available. `BUILD-INFO.txt` in the ZIP identifies its source commit. Windows builds target 64-bit x64 laptops only. Internet is needed to download the ZIP; the extracted app runs locally with its runtime, fonts, and icons bundled.
+
+### Download and install on Android
+
+1. Open **[the latest GitHub release](https://github.com/app-iskedyul/app-iskedyul.github.io/releases/latest)** on your Android phone.
+2. Download **`iskedyul-android.apk`** under **Assets** and open it. If prompted, allow that browser or file manager to install apps, then choose **Install**. You can turn this permission off afterward.
+3. Open **iSkedyul** from the app launcher. Your planner starts empty. Add classes, linked tasks and notes as usual; Android Back follows the app's navigation.
+
+This is a compiled **native Flutter Android app**, not a website shortcut or WebView. It requires **Android 7.0 (API 24) or later**. The universal APK includes ARMv7, ARM64 and x86_64 code, and bundled fonts/icons; no browser, internet, development SDK or emulator is needed to use it. GitHub's **Source code** ZIP contains the project files, not an installable app. An APK is for Android; Windows users should use the Windows ZIP.
+
+The build is **development-signed for classroom sideloading**, not Play Store publishing. CI may generate a different signing key for a later build; Android can then require uninstalling the previous version. **Uninstalling or clearing app data erases the phone's planner.** A stable protected release signing key would be needed for reliable updates without reinstalling; no private signing key is committed here.
+
+Android keeps the same versioned planner snapshot in app-private storage (`iskedyul.data.v1.json`) using `path_provider`. Classes, tasks, completion and notes are saved after each change. Data is separate from Pages/Windows and is not transferred or synced. Android cloud backup is disabled. The app requires no external-storage or network permission in its release manifest. Malformed data and save failures use the same recovery notices as the web app.
+
+**Verification:** the APK is compiled and its signature checked in the cloud. No phone/emulator installation, Android navigation or app-restart persistence test has been performed, as requested. The existing web/state/widget checks remain in CI; they do not establish Android runtime behavior. The release includes `iskedyul-android.apk.sha256` for download integrity. For the current run's APK before release, download the **`iskedyul-android-apk`** Actions artifact and extract it.
+
+### Build the APK in the cloud
+
+The Android project is included in `android/`; use the existing checkout. The workflow provisions Java 17, Flutter 3.47.7, Android platforms/build-tools 35 and 36, NDK 28.2.13676358 and CMake 3.22.1. The Android job is the reproducible build environment; the web cloud workspace does not need a local Android SDK. After those prerequisites are installed on a build machine:
+
+```sh
+flutter config --enable-android --jdk-dir "$JAVA_HOME"
+flutter pub get --enforce-lockfile
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
+```
+
+CI sets the APK version code from its run number and publishes it as `iskedyul-android.apk`. Android SDK, Gradle and Maven downloads also need network access to Google's download/Maven hosts, Maven Central, and Gradle's distribution/plugin hosts. No emulator is installed or run.
 
 ### Optional: bare web build for an existing server
 
@@ -144,7 +171,7 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `test/fixtures/`: sample data used only by tests; no samples are inserted in the app.
 - `lib/data/app_state.dart`: state and save/delete operations using Flutter's ChangeNotifier and InheritedNotifier.
 - `lib/data/snapshot.dart`: versioned JSON serialization, validation, and recovery.
-- `lib/data/storage*.dart`: a small synchronous storage interface, native browser localStorage adapter, and in-memory test implementation.
+- `lib/data/storage*.dart`: a small synchronous storage interface, browser localStorage adapter, app-private native file adapter, and in-memory test implementation. Storage initializes before the app opens.
 - `lib/screens/screens.dart`: the six screens and their small shared widgets.
 - `test/app_test.dart`: ordering, navigation, forms, delete confirmations, separate completed sections, and responsive layouts.
 - `test/calendar_test.dart`: date/year boundaries, weekly repetition, next-class transitions, deadlines, contextual forms, and timetable navigation.
@@ -152,17 +179,18 @@ Packages are written to `build/downloads/`. The packaging tool cross-compiles th
 - `test/modern_planner_test.dart`: dashboard shortcuts, task filters, month navigation/date picker, 24-hour scrolling, time-slot forms, duration/overlap layout, supported dates, and responsive calendar modes.
 - `tool/launcher/` and `tool/package_web.py`: compiled local server and Windows download packaging (cloud build tools only).
 - `tool/check_windows.ps1`: smoke check of the packaged executable on a Windows CI runner.
-- `tool/WINDOWS_RELEASE.md`: download and launch instructions attached to each release.
+- `tool/WINDOWS_RELEASE.md`: Windows and Android download/install instructions attached to each release.
+- `android/`: native Flutter Android host, stable application ID, manifest and Gradle build configuration.
 - `test/persistence_test.dart`: reload simulation, saved edits/completion/notes, cascading deletion, intentionally empty data, malformed saved data, and storage failure/retry.
 
-Routing uses the Flutter-maintained `go_router` package, pinned to 17.0.1. Hash-based routes work on Pages and local static servers without server rewrites. App state continues to use Flutter’s built-in ChangeNotifier and InheritedNotifier. Forms keep their own draft values; Cancel discards them. Each successful mutation saves schedules, tasks, completion status, priorities, dates, and notes together as one versioned JSON snapshot under localStorage key `iskedyul.data.v1`.
+Routing uses the Flutter-maintained `go_router` package, pinned to 17.0.1. Hash-based routes work on Pages and local static servers without server rewrites. App state continues to use Flutter’s built-in ChangeNotifier and InheritedNotifier. Forms keep their own draft values; Cancel discards them. Each successful mutation saves schedules, tasks, completion status, priorities, dates, and notes together as one versioned JSON snapshot under localStorage key `iskedyul.data.v1` on web or the app-private `iskedyul.data.v1.json` file on Android. `path_provider` locates the native private directory; a temporary file is flushed before replacing the saved snapshot.
 
 ## Local saving and recovery
 
 - Data survives refresh and browser restarts when browser storage is available. Use the same browser profile and site origin (scheme, hostname, and port). The new organization address, the old personal Pages address, and a downloaded local build have separate storage; changing local server ports also changes the saved planner.
 - A missing storage key creates an empty planner. A valid empty snapshot stays empty. Existing saved entries are preserved during updates, including older sample entries; use Calendar → Clear planner to intentionally remove them.
 - Invalid JSON or an unsupported snapshot starts an empty planner with a visible recovery notice. Valid snapshots containing invalid entries keep valid schedules/tasks and skip malformed rows, duplicate IDs, invalid dates/times, and tasks with missing schedules. Recovery does not overwrite the original snapshot until you make another change.
-- If browser storage is blocked or full, the app remains usable in memory and displays a warning. It does not claim the change was saved; keep the tab open, resolve storage access/space, and make another change to retry saving. Reloading before a successful save loses unsaved changes.
+- If local storage is unavailable or full, the app remains usable in memory and displays a warning. It does not claim the change was saved; keep the app open, resolve storage access/space, and make another change to retry saving. Reloading before a successful save loses unsaved changes.
 - Notes are one plain-text field per schedule, limited to 2,000 characters. Titles and subjects are required; schedules must end after they start on the same day. Tasks require one existing linked schedule. Past due dates are allowed and become overdue when pending.
 - Pending overdue tasks sort first, then High/Medium/Low priority, then nearest due date. Due dates use local calendar dates, with no time-of-day deadline. Completed tasks stay separate and can be unchecked or edited.
 - Local storage is not backup or cloud sync. Clearing site data, switching profiles/devices, or private-session cleanup can remove access to saved data. Multiple simultaneous tabs are not synchronized; the last saved snapshot wins.

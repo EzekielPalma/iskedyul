@@ -1559,7 +1559,7 @@ class ConfirmationScreen extends StatelessWidget {
       Text(
         AppScope.of(context).storageWarning == null
             ? 'You’re all set.'
-            : 'Not saved. Keep this tab open.',
+            : 'Not saved. Keep the app open.',
       ),
       const SizedBox(height: 24),
       FilledButton(

@@ -5,7 +5,7 @@ import 'calendar.dart';
 import 'snapshot.dart';
 import 'storage_contract.dart';
 
-// All changes are saved synchronously as one browser-local snapshot.
+// All changes are saved synchronously as one local snapshot.
 class AppState extends ChangeNotifier {
   AppState({SnapshotStorage? storage}) : storage = storage ?? MemoryStorage() {
     try {
@@ -27,7 +27,7 @@ class AppState extends ChangeNotifier {
         }
       }
     } catch (_) {
-      storageWarning = 'Storage is blocked. Allow browser storage, then edit an item to save.';
+      storageWarning = 'Storage is unavailable. Check storage access and free space, then edit an item to save.';
     }
     for (final id in [
       ...schedules.map((s) => s.id),
@@ -54,7 +54,7 @@ class AppState extends ChangeNotifier {
       storageWarning = null;
       recoveryMessage = null;
     } catch (_) {
-      storageWarning = 'Could not save. Keep this tab open. Check browser storage, then edit an item to retry.';
+      storageWarning = 'Could not save. Keep the app open. Check storage access and free space, then edit an item to retry.';
     }
   }
 

@@ -18,4 +18,4 @@ class BrowserStorage implements SnapshotStorage {
   void write(String value) => localStorage.setItem(key.toJS, value.toJS);
 }
 
-SnapshotStorage createStorage() => BrowserStorage();
+Future<SnapshotStorage> createStorage() async => BrowserStorage();

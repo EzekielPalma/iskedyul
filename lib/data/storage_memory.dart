@@ -1,3 +1,3 @@
 import 'storage_contract.dart';
 
-SnapshotStorage createStorage() => MemoryStorage();
+Future<SnapshotStorage> createStorage() async => MemoryStorage();

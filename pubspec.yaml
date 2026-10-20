@@ -1,5 +1,5 @@
 name: iskedyul
-description: "iSkedyul Phase 2 browser-local student planner prototype."
+description: "iSkedyul student planner with web and Android local saving."
 publish_to: 'none'
 version: 0.2.0+2
 
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   go_router: 17.0.1
+  path_provider: 2.1.6
 
 dev_dependencies:
   flutter_test:
